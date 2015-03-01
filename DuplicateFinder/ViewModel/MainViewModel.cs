@@ -25,7 +25,7 @@ namespace DuplicateFinder.ViewModel
     /// </summary>
     public class MainViewModel : ViewModelBase
     {
-        public const string DefaultImage = "./res/fileclose.png";
+        public const string DefaultImage = "./res/picture.png";
 
         #region attributes
 
