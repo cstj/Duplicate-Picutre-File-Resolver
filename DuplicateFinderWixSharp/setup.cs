@@ -31,7 +31,7 @@ class Script
         project.GUID = new Guid("9E58F671-65CB-4971-BCE5-19B81A11138A");
         string LicenceFile = System.IO.Path.Combine(System.IO.Path.Combine(System.IO.Path.Combine(System.IO.Path.Combine(ExecutePath, ".."), ".."), ".."), "LICENSE.rtf");
         if (System.IO.File.Exists(LicenceFile)) project.LicenceFile = LicenceFile;
-        Compiler.PreserveTempFiles = true;
+        Compiler.PreserveTempFiles = false;
         Compiler.AllowNonRtfLicense = false;
         Compiler.WixLocation = System.IO.Path.Combine(Application.StartupPath, @"..\..\..\packages\WiX.3.9.2\tools");
         Compiler.WixSdkLocation = System.IO.Path.Combine(Compiler.WixLocation, "sdk");
