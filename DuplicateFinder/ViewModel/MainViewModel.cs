@@ -272,7 +272,11 @@ namespace DuplicateFinder.ViewModel
         {
             ScanEnabled = false;
             Thread.Sleep(0);
-            if (!scanWorker.IsBusy) scanWorker.RunWorkerAsync();
+            if (!scanWorker.IsBusy)
+            {
+                PgsVal = 0;
+                scanWorker.RunWorkerAsync();
+            }
         }
 
         private void scanPath_Progress(object sender, ProgressChangedEventArgs e)
@@ -305,7 +309,7 @@ namespace DuplicateFinder.ViewModel
             double imax = queryLengthDups.Count();
             int percent = 0;
 
-            Parallel.ForEach(queryLengthDups, fg =>
+            Parallel.ForEach(queryLengthDups, new ParallelOptions { MaxDegreeOfParallelism = 40 }, fg =>
             //foreach (var fg in queryLengthDups)
             {
                 DuplicateFile d = new DuplicateFile();
