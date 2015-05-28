@@ -305,19 +305,20 @@ namespace DuplicateFinder.ViewModel
 
             ConcurrentBag<DuplicateFile> tmpDupList = new ConcurrentBag<DuplicateFile>();
             
+            //Set Max and number of dups to process.
             int i = 0;
-            double imax = queryLengthDups.Count();
+            double imax = 0;
+            var queryLengthDupsList = queryLengthDups.ToList();
+            queryLengthDupsList.ForEach((b) => { imax = imax + b.Count(); });
             int percent = 0;
 
             Parallel.ForEach(queryLengthDups, new ParallelOptions { MaxDegreeOfParallelism = 40 }, fg =>
             //foreach (var fg in queryLengthDups)
             {
+                //Create a new set of dups
                 DuplicateFile d = new DuplicateFile();
-                Interlocked.Increment(ref i);
                 d.displayName = string.Empty;
-                percent = Convert.ToInt32((i / imax) * 100);
-                scanWorker.ReportProgress(percent);
-                Thread.Sleep(0);
+
                 byte[] hash = null;
                 byte[] hash1 = null;
                 List<string> tmpFiles = new List<string>();
@@ -326,6 +327,11 @@ namespace DuplicateFinder.ViewModel
                     foreach (var f in fg)
                     {
                         if (d.displayName == string.Empty) d.displayName = f.Name;
+                        //Set some inits and set the percentage for the progress bar
+                        Interlocked.Increment(ref i);
+                        percent = Convert.ToInt32((i / imax) * 100);
+                        scanWorker.ReportProgress(percent);
+
 
                         using (FileStream fi = f.OpenRead())
                         {
