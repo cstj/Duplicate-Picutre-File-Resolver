@@ -32,6 +32,20 @@ namespace DuplicateFinder.ViewModel
         #region Public Vars
 
         #region ImageSource
+        public const string TitleStringName = "TitleString";
+        private string _TitleString = null;
+        public string TitleString
+        {
+            get { return _TitleString; }
+            set
+            {
+                if (_TitleString == value) return;
+                _TitleString = value;
+                RaisePropertyChanged(TitleStringName);
+            }
+        }
+        #endregion
+        #region ImageSource
         public const string ImageSourceName = "ImageSource";
         private System.Windows.Media.Imaging.BitmapImage _ImageSource = null;
         public System.Windows.Media.Imaging.BitmapImage ImageSource
@@ -183,6 +197,9 @@ namespace DuplicateFinder.ViewModel
         public MainViewModel()
         {
             dispatch = App.Current.Dispatcher;
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+            TitleString = "Duplicate Picutre File Resolver " + version;
             GetSourceLocationCommand = new RelayCommand(GetSourceExecute, () => true);
             KeepSelectedCommand = new RelayCommand(KeepSelectedExecute, () => true);
             DeleteSelectedCommand = new RelayCommand(DeleteSelectedExecute, () => true);

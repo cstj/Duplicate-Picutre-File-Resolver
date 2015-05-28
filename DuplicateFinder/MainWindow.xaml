@@ -7,7 +7,7 @@
         mc:Ignorable="d ignore"
         Height="543.808"
         Width="676.597"
-        Title="Duplicate Picutre File Resolver"
+        Title="{Binding TitleString}"
         DataContext="{Binding Main, Source={StaticResource Locator}}">
 
     <Window.Resources>
