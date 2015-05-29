@@ -10,32 +10,58 @@ using Microsoft.Deployment.WindowsInstaller;
 
 class Script
 {
+    //Set Information for build
+    const string VersionFileName = "Duplicate_Picutre_File_Resolver.exe";
     const string DotNetFileName = "dotnet.exe";
     const string wixProjectName = "DuplicateFinder";
     const string wixCompany = "St John";
+    //The location of .net.  This is 4.5.2
     const string DotNetSource = "http://download.microsoft.com/download/B/4/1/B4119C11-0423-477B-80EE-7A474314B347/NDP452-KB2901954-Web.exe";
     
     static string ExecutePath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+    static Project project;
 
     static public void Main(string[] args)
     {
         //Add list of projects to be included
         List<string> projects = new List<string>();
-        projects.Add("DuplicateFinder");
+        projects.Add(wixProjectName);
 
         //Construct Project
-        Project project = new Project(wixProjectName);
+        project = new Project(wixProjectName);
+        project.GUID = new Guid("9E58F671-65CB-4971-BCE5-19B81A11138A");
+        //project.UpgradeCode = new Guid("BE0C7208-6E28-48AD-89AF-82DDB2150CE9");
         project.Dirs = GetFiles(projects);
         project.Binaries = GetBinaries(project);
-        project.UI = WUI.WixUI_InstallDir;
-        project.GUID = new Guid("9E58F671-65CB-4971-BCE5-19B81A11138A");
+        project.UI = WUI.WixUI_InstallDir;        
+
+        //Get Licence if it exists.
         string LicenceFile = System.IO.Path.Combine(System.IO.Path.Combine(System.IO.Path.Combine(System.IO.Path.Combine(ExecutePath, ".."), ".."), ".."), "LICENSE.rtf");
         if (System.IO.File.Exists(LicenceFile)) project.LicenceFile = LicenceFile;
+
+        //Some Defaults for the builder
         Compiler.PreserveTempFiles = false;
         Compiler.AllowNonRtfLicense = false;
+
+        //The Builder Locations (Assumes you have included wix as a package.
         Compiler.WixLocation = System.IO.Path.Combine(Application.StartupPath, @"..\..\..\packages\WiX.3.9.2\tools");
         Compiler.WixSdkLocation = System.IO.Path.Combine(Compiler.WixLocation, "sdk");
-        Compiler.BuildMsi(project);
+
+        //Standard Upgrade Strategy
+        project.WixSourceGenerated += doc => doc.Root.Select("Product").AddElement("MajorUpgrade")
+            .AddAttributes(new Dictionary<string, string>
+            {
+                { "Schedule","afterInstallInitialize" },
+                { "DowngradeErrorMessage","A later version of [ProductName] is already installed. Setup will now exit." }
+            });
+
+        //Name project with version if we have one
+        if (project.Version != null) project.Name = project.Name + " " + project.Version.ToString();
+        project.ControlPanelInfo.UrlUpdateInfo = "https://github.com/cstj/Duplicate-Picutre-File-Resolver/releases";
+        project.ControlPanelInfo.UrlInfoAbout = "https://github.com/cstj/Duplicate-Picutre-File-Resolver/";
+
+        //Build the MSI
+        Compiler.BuildMsi(project, wixProjectName + " " + project.Version + ".msi");
     }
 
 
@@ -54,6 +80,9 @@ class Script
             string finalPath = System.IO.Path.Combine(System.IO.Path.Combine(curPath, p), pathToFiles);
             if (System.IO.Directory.Exists(finalPath))
             {
+                //Search Finalpath for ProductVersion
+                string VersionPath = System.IO.Path.Combine(finalPath, VersionFileName);
+                if (System.IO.File.Exists(VersionPath)) project.Version = System.Reflection.AssemblyName.GetAssemblyName(VersionPath).Version;
                 //Add base directory of VS project
                 string dirPath = @"%ProgramFiles%\" + wixCompany + "\\" + wixProjectName;
                 Dir d = new Dir(dirPath);
@@ -78,6 +107,7 @@ class Script
                 shortName = shortName.Replace("_", " ").Replace("-", " ");  //Replace - and _ with spaces
                 //Add the file and create the shortcut using the icon form the exe.
                 fileList.Add(new File(f, new FileShortcut(shortName, @"%ProgramMenu%\" + wixCompany + "\\" + wixProjectName) { IconFile = f, WorkingDirectory = @"INSTALLDIR" }));
+                project.ControlPanelInfo.ProductIcon = f;
             }
             else
             {
