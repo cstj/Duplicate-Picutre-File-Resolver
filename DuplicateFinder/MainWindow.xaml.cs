@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using DuplicateFinder.ViewModel;
+using AutoUpdaterDotNET;
 
 namespace DuplicateFinder
 {
@@ -14,6 +15,9 @@ namespace DuplicateFinder
         public MainWindow()
         {
             InitializeComponent();
+            AutoUpdater.OpenDownloadPage = true;
+            AutoUpdater.Start("https://raw.githubusercontent.com/cstj/Duplicate-Picutre-File-Resolver/master/DuplicateFinder/DuplicateFinderVersion.xml");
+
             Closing += (s, e) => ViewModelLocator.Cleanup();
         }
     }
