@@ -228,7 +228,6 @@ namespace DuplicateFinder.ViewModel
             scanWorker = new BackgroundWorker();
             scanWorker.DoWork += new DoWorkEventHandler(scanPath_DoWork);
             scanWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(scanPath_Completed);
-            scanWorker.ProgressChanged += new ProgressChangedEventHandler(scanPath_Progress);
             scanWorker.WorkerReportsProgress = true;
             
             this.PropertyChanged += MainViewModel_PropertyChanged;
@@ -338,28 +337,22 @@ namespace DuplicateFinder.ViewModel
             Thread.Sleep(0);
             if (!scanWorker.IsBusy)
             {
-                InfoProgress = "Processing Files";
-                PgsVal = 0;
-                DupList.Clear();
-                RaisePropertyChanged(DupListName);
                 scanWorker.RunWorkerAsync();
             }
-        }
-
-        private void scanPath_Progress(object sender, ProgressChangedEventArgs e)
-        {
-            if (e.ProgressPercentage > PgsVal) PgsVal = e.ProgressPercentage;
         }
 
         private void scanPath_Completed(object sender, RunWorkerCompletedEventArgs e)
         {
             ScanEnabled = true;
-            InfoProgress = "Done";
         }
 
         private void scanPath_DoWork(object sender, DoWorkEventArgs e)
         {
+            PgsVal = 0;
+            dispatch.Invoke(() => DupList.Clear());
+
             //Get Listing of all files and files in sub directories
+            InfoProgress = "Getting File List";
             DirectoryInfo dir = new DirectoryInfo(SourceLocation);
             IEnumerable<FileInfo> fileList = dir.GetFiles("*.*", SearchOption.AllDirectories);
 
@@ -379,8 +372,7 @@ namespace DuplicateFinder.ViewModel
             int percent = 0;
 
             //Start Processing
-            Parallel.ForEach(queryLengthDupsList, (fg) =>
-            //foreach (var fg in queryLengthDups)
+            foreach (var fg in queryLengthDups)
             {
                 //Create a new set of dups
                 DuplicateFile d = new DuplicateFile();
@@ -391,25 +383,26 @@ namespace DuplicateFinder.ViewModel
                 byte[] hash = null;
                 byte[] hash1 = null;
                 ConcurrentBag<string> tmpFiles = new ConcurrentBag<string>();
-                using (System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed())
+                //For every file in the list of files iwth the same length
+                Parallel.ForEach(fg, (f) =>
                 {
                     //For every file in the list of files iwth the same length
                     Parallel.ForEach(fg, (f) =>
                     {
                         //Set some inits and set the percentage for the progress bar
                         Interlocked.Increment(ref i);
-                        dispatch.Invoke(() => InfoProgress = "Processing Files " + i + "/" + imax);
+                        InfoProgress = "Processing Files " + i + "/" + imax;
                         percent = Convert.ToInt32((i / imax) * 100);
-                        scanWorker.ReportProgress(percent);
+                        if (percent > PgsVal) PgsVal = percent;
 
                         //Set the display name to the first file in the list
                         lock (d.displayName)
                         {
                             if (d.displayName == string.Empty) d.displayName = f.Name;
                         }
-
                         //Open the file and calculate the hash.  If its the same, add it to the list of files.
                         using (FileStream fi = f.OpenRead())
+                        using (System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed())
                         {
                             hash = sha1.ComputeHash(fi);
                             fi.Close();
@@ -443,7 +436,8 @@ namespace DuplicateFinder.ViewModel
                         dispatch.Invoke(() => DupList.Add(d));
                     }
                 }
-            });
+            }
+            if (scanWorker.CancellationPending) InfoProgress = "Canceled";
         }
         #endregion
 
