@@ -13,6 +13,7 @@ using System.Windows.Threading;
 
 namespace DuplicateFinder.ViewModel
 {
+
     public class DuplicateFile
     {
         public string displayName { get; set; }
@@ -31,7 +32,21 @@ namespace DuplicateFinder.ViewModel
 
         #region Public Vars
 
-        #region ImageSource
+        #region InfoProgress
+        public const string InfoProgressName = "InfoProgress";
+        private string _InfoProgress;
+        public string InfoProgress
+        {
+            get { return _InfoProgress; }
+            set
+            {
+                if (_InfoProgress == value) return;
+                _InfoProgress = value;
+                RaisePropertyChanged(InfoProgressName);
+            }
+        }
+        #endregion   
+        #region Title String
         public const string TitleStringName = "TitleString";
         private string _TitleString = null;
         public string TitleString
@@ -185,43 +200,45 @@ namespace DuplicateFinder.ViewModel
             }
         }
         #endregion
-
+        
         #endregion
-
+        
         #region Private Vars
-        Dispatcher dispatch;
+        private Dispatcher dispatch;
         #endregion
         /// <summary>
         /// Initializes a new instance of the MainViewModel class.
         /// </summary>
         public MainViewModel()
         {
+            
             dispatch = App.Current.Dispatcher;
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
-
+            
             TitleString = "Duplicate Picutre File Resolver " + version;
             GetSourceLocationCommand = new RelayCommand(GetSourceExecute, () => true);
             KeepSelectedCommand = new RelayCommand(KeepSelectedExecute, () => true);
             DeleteSelectedCommand = new RelayCommand(DeleteSelectedExecute, () => true);
-
+            
             DupList = new ObservableCollection<DuplicateFile>();
             DupFilesList = new ObservableCollection<string>();
 
-
-
+            
             ScanCommand = new RelayCommand(ScanExecute, () => true);
             scanWorker = new BackgroundWorker();
             scanWorker.DoWork += new DoWorkEventHandler(scanPath_DoWork);
             scanWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(scanPath_Completed);
             scanWorker.ProgressChanged += new ProgressChangedEventHandler(scanPath_Progress);
             scanWorker.WorkerReportsProgress = true;
-
+            
             this.PropertyChanged += MainViewModel_PropertyChanged;
-
+            
             if (Properties.Settings.Default.SourceLocation != string.Empty) SourceLocation = Properties.Settings.Default.SourceLocation;
-            LoadImage(DefaultImage);
+            
+            if (System.ComponentModel.LicenseManager.UsageMode == LicenseUsageMode.Runtime) LoadImage(DefaultImage);
         }
 
+        #region Property Change Events
         public void MainViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             switch (e.PropertyName)
@@ -266,7 +283,7 @@ namespace DuplicateFinder.ViewModel
                     break;
             }
         }
-
+        
         private void FilesList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
 
@@ -281,7 +298,8 @@ namespace DuplicateFinder.ViewModel
         {
             RaisePropertyChanged(DupListName);
         }
-
+        #endregion
+        
         private void LoadImage(string path)
         {
             if (File.Exists(path))
@@ -306,7 +324,7 @@ namespace DuplicateFinder.ViewModel
                 LoadImage(DefaultImage);
             }
         }
-
+        
         #region commands
         #region scan
         /// <summary>
@@ -320,6 +338,7 @@ namespace DuplicateFinder.ViewModel
             Thread.Sleep(0);
             if (!scanWorker.IsBusy)
             {
+                InfoProgress = "Processing Files";
                 PgsVal = 0;
                 DupList.Clear();
                 RaisePropertyChanged(DupListName);
@@ -335,6 +354,7 @@ namespace DuplicateFinder.ViewModel
         private void scanPath_Completed(object sender, RunWorkerCompletedEventArgs e)
         {
             ScanEnabled = true;
+            InfoProgress = "Done";
         }
 
         private void scanPath_DoWork(object sender, DoWorkEventArgs e)
@@ -378,6 +398,7 @@ namespace DuplicateFinder.ViewModel
                     {
                         //Set some inits and set the percentage for the progress bar
                         Interlocked.Increment(ref i);
+                        dispatch.Invoke(() => InfoProgress = "Processing Files " + i + "/" + imax);
                         percent = Convert.ToInt32((i / imax) * 100);
                         scanWorker.ReportProgress(percent);
 
