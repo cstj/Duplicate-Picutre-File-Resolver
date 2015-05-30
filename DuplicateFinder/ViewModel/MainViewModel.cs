@@ -102,6 +102,20 @@ namespace DuplicateFinder.ViewModel
             }
         }
         #endregion
+        #region StopEnabled
+        public const string StopEnabledName = "StopEnabled";
+        private bool _StopEnabled = false;
+        public bool StopEnabled
+        {
+            get { return _StopEnabled; }
+            set
+            {
+                if (_StopEnabled == value) return;
+                _StopEnabled = value;
+                RaisePropertyChanged(StopEnabledName);
+            }
+        }
+        #endregion
         #region ScanEnabled
         public const string ScanEnabledName = "ScanEnabled";
         private bool _ScanEnabled = false;
@@ -211,7 +225,6 @@ namespace DuplicateFinder.ViewModel
         /// </summary>
         public MainViewModel()
         {
-            
             dispatch = App.Current.Dispatcher;
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
             
@@ -219,6 +232,7 @@ namespace DuplicateFinder.ViewModel
             GetSourceLocationCommand = new RelayCommand(GetSourceExecute, () => true);
             KeepSelectedCommand = new RelayCommand(KeepSelectedExecute, () => true);
             DeleteSelectedCommand = new RelayCommand(DeleteSelectedExecute, () => true);
+            StopCommand = new RelayCommand(StopExectute, () => true);
             
             DupList = new ObservableCollection<DuplicateFile>();
             DupFilesList = new ObservableCollection<string>();
@@ -226,6 +240,7 @@ namespace DuplicateFinder.ViewModel
             
             ScanCommand = new RelayCommand(ScanExecute, () => true);
             scanWorker = new BackgroundWorker();
+            scanWorker.WorkerSupportsCancellation = true;
             scanWorker.DoWork += new DoWorkEventHandler(scanPath_DoWork);
             scanWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(scanPath_Completed);
             scanWorker.WorkerReportsProgress = true;
@@ -338,12 +353,14 @@ namespace DuplicateFinder.ViewModel
             if (!scanWorker.IsBusy)
             {
                 scanWorker.RunWorkerAsync();
+                StopEnabled = true;
             }
         }
 
         private void scanPath_Completed(object sender, RunWorkerCompletedEventArgs e)
         {
             ScanEnabled = true;
+            StopEnabled = false;
         }
 
         private void scanPath_DoWork(object sender, DoWorkEventArgs e)
@@ -374,6 +391,7 @@ namespace DuplicateFinder.ViewModel
             //Start Processing
             foreach (var fg in queryLengthDups)
             {
+                if (scanWorker.CancellationPending) break;
                 //Create a new set of dups
                 DuplicateFile d = new DuplicateFile();
                 d.displayName = string.Empty;
@@ -386,8 +404,7 @@ namespace DuplicateFinder.ViewModel
                 //For every file in the list of files iwth the same length
                 Parallel.ForEach(fg, (f) =>
                 {
-                    //For every file in the list of files iwth the same length
-                    Parallel.ForEach(fg, (f) =>
+                    if (!scanWorker.CancellationPending)
                     {
                         //Set some inits and set the percentage for the progress bar
                         Interlocked.Increment(ref i);
@@ -422,8 +439,8 @@ namespace DuplicateFinder.ViewModel
                                 tmpFiles.Add(f.FullName);
                             }
                         }
-                    });
-                }
+                    }
+                });
                 //Do we have dups?
                 if (tmpFiles.Count() > 1)
                 {
@@ -438,6 +455,8 @@ namespace DuplicateFinder.ViewModel
                 }
             }
             if (scanWorker.CancellationPending) InfoProgress = "Canceled";
+            else InfoProgress = "Done";
+
         }
         #endregion
 
@@ -501,6 +520,12 @@ namespace DuplicateFinder.ViewModel
                 System.Windows.MessageBox.Show("Error deleting file:" + Environment.NewLine + e.Message, "Error Copying Files", System.Windows.MessageBoxButton.OK);
             }
             TestDupItem();
+        }
+
+        public RelayCommand StopCommand { get; internal set; }  
+        private void StopExectute()
+        {
+            scanWorker.CancelAsync();
         }
 
         private void TestDupItem()
