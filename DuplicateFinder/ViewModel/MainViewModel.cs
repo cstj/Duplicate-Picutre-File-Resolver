@@ -10,6 +10,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
+using System.Windows.Media.Imaging;
 
 namespace DuplicateFinder.ViewModel
 {
@@ -20,6 +21,19 @@ namespace DuplicateFinder.ViewModel
         public ObservableCollection<String> filesList { get; set; }
     }
 
+    public enum ExifOrientations
+    {
+        None = 0,
+        Normal = 1,
+        HorizontalFlip = 2,
+        Rotate180 = 3,
+        VerticalFlip = 4,
+        Transpose = 5,
+        Rotate270 = 6,
+        Transverse = 7,
+        Rotate90 = 8
+    }
+
     /// <summary>
     /// This class contains properties that the main View can data bind to.
     /// <para>
@@ -28,7 +42,7 @@ namespace DuplicateFinder.ViewModel
     /// </summary>
     public class MainViewModel : ViewModelBase
     {
-        public const string DefaultImage = "./res/picture.png";
+        public string DefaultImage = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),"./res/picture.png");
 
         #region Public Vars
 
@@ -62,8 +76,8 @@ namespace DuplicateFinder.ViewModel
         #endregion
         #region ImageSource
         public const string ImageSourceName = "ImageSource";
-        private System.Windows.Media.Imaging.BitmapImage _ImageSource = null;
-        public System.Windows.Media.Imaging.BitmapImage ImageSource
+        private System.Windows.Media.ImageSource _ImageSource = null;
+        public System.Windows.Media.ImageSource ImageSource
         {
             get { return _ImageSource; }
             set
@@ -219,6 +233,7 @@ namespace DuplicateFinder.ViewModel
         
         #region Private Vars
         private Dispatcher dispatch;
+        MemoryStream imageMemoryStream;
         #endregion
         /// <summary>
         /// Initializes a new instance of the MainViewModel class.
@@ -250,6 +265,20 @@ namespace DuplicateFinder.ViewModel
             if (Properties.Settings.Default.SourceLocation != string.Empty) SourceLocation = Properties.Settings.Default.SourceLocation;
             
             if (System.ComponentModel.LicenseManager.UsageMode == LicenseUsageMode.Runtime) LoadImage(DefaultImage);
+        }
+
+        void ImageSource_Changed(object sender, EventArgs e)
+        {
+            //Try to dispose of the image memory stream on image change
+            if (imageMemoryStream != null)
+            {
+                try
+                {
+                    imageMemoryStream.Dispose();
+                }
+                catch { }
+            }
+            ImageSource.Changed -= ImageSource_Changed;
         }
 
         #region Property Change Events
@@ -318,7 +347,8 @@ namespace DuplicateFinder.ViewModel
         {
             if (File.Exists(path))
             {
-                System.Windows.Media.Imaging.BitmapImage image = new System.Windows.Media.Imaging.BitmapImage();
+                MemoryStream ms;
+                //Cache File
                 using (FileStream f = new FileStream(path, FileMode.Open, FileAccess.Read))
                 {
                     byte[] bytes;
@@ -326,12 +356,43 @@ namespace DuplicateFinder.ViewModel
                     {
                         bytes = br.ReadBytes((int)f.Length);
                     }
-                    MemoryStream ms = new MemoryStream(bytes);
-                    image.BeginInit();
-                    image.StreamSource = ms;
-                    image.EndInit();
-                    ImageSource = image;
+                    ms = new MemoryStream(bytes);
                 }
+                int angle = 0;
+                TransformedBitmap timage = new TransformedBitmap();
+                
+                //Get Metadata (EXIF)
+                BitmapFrame frame = BitmapFrame.Create(ms);
+                if (frame.Metadata != null)
+                {
+                    BitmapMetadata meta = (BitmapMetadata)frame.Metadata;
+                    if (meta.GetQuery("/app1/ifd/{ushort=274}") != null)
+                    {
+                        var orientation = (ExifOrientations)Enum.Parse(typeof(ExifOrientations), meta.GetQuery("/app1/ifd/{ushort=274}").ToString());
+                        switch (orientation)
+                        {
+                            case ExifOrientations.Rotate90:
+                                angle = -90;
+                                break;
+                            case ExifOrientations.Rotate180:
+                                angle = -180;
+                                break;
+                            case ExifOrientations.Rotate270:
+                                angle = -270;
+                                break;
+                        }
+                    }
+                }
+
+                //Create Image
+                timage.BeginInit();
+                timage.Source = frame;
+                System.Windows.Media.RotateTransform xform = new System.Windows.Media.RotateTransform((double)angle);
+                timage.Transform = xform;
+                timage.EndInit();
+                ImageSource = timage;
+                imageMemoryStream = ms;
+                ImageSource.Changed += ImageSource_Changed;
             }
             else
             {
