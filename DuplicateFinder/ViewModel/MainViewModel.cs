@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using System.Windows.Media.Imaging;
-using ZetaLongPaths;
+//using ZetaLongPaths;
 using System.Diagnostics;
-//using Delimon.Win32.IO;
+using Delimon.Win32.IO;
 
 namespace DuplicateFinder.ViewModel
 {
@@ -45,7 +45,7 @@ namespace DuplicateFinder.ViewModel
     /// </summary>
     public class MainViewModel : ViewModelBase
     {
-        public string DefaultImage = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),"./res/picture.png");
+        public string DefaultImage = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), @"res\picture.png");
         #region Public Vars
 
         #region InfoProgress
@@ -328,7 +328,7 @@ namespace DuplicateFinder.ViewModel
                     //If the source changes save it for next time
                     Properties.Settings.Default.SourceLocation = SourceLocation;
                     Properties.Settings.Default.Save();
-                    ZlpDirectoryInfo sourceDir = new ZlpDirectoryInfo(SourceLocation);
+                    DirectoryInfo sourceDir = new DirectoryInfo(SourceLocation);
                     if (sourceDir.Exists) ScanEnabled = true;
                     else ScanEnabled = false;
                     break;
@@ -336,7 +336,7 @@ namespace DuplicateFinder.ViewModel
                 case DupSelectedName:
                     if (DupSelected != null)
                     { 
-                        ZlpFileInfo f = new ZlpFileInfo(DupSelected.filesList[0]);
+                        FileInfo f = new FileInfo(DupSelected.filesList[0]);
                         if (f.Exists)
                         {
                             //Set the files list
@@ -385,7 +385,7 @@ namespace DuplicateFinder.ViewModel
         
         private void LoadImage(string path)
         {
-            ZlpFileInfo file = new ZlpFileInfo(path);
+            FileInfo file = new FileInfo(path);
             if (file.Exists)
             {
                 System.IO.MemoryStream ms;
@@ -459,17 +459,35 @@ namespace DuplicateFinder.ViewModel
             }
         }
 
+        private ConcurrentBag<FileInfo> GetFiles(DirectoryInfo path)
+        {
+            ConcurrentBag<FileInfo> list = new ConcurrentBag<FileInfo>();
+            //get files
+            //get dirs
+            Parallel.ForEach(path.GetDirectories(), (d) =>
+            {
+                GetFiles(d).ToList().ForEach((f) => list.Add(f));
+            });
+            path.GetFiles().ToList().ForEach((f) => list.Add(f));
+            return list;
+        }
+
         private void scanPath_DoWork(object sender, DoWorkEventArgs e)
         {
             try
             {
                 PgsVal = 0;
-                dispatch.Invoke(() => DupList.Clear());
+                dispatch.Invoke(() => {
+                    DupList.Clear();
+                    DupFilesList.Clear();
+                });
 
                 //Get Listing of all files and files in sub directories
                 InfoProgress = "Getting File List";
-                ZlpDirectoryInfo dir = new ZlpDirectoryInfo(SourceLocation);
-                var fileList = dir.GetFiles("*.*", System.IO.SearchOption.AllDirectories);
+                DirectoryInfo dir = new DirectoryInfo(SourceLocation);
+                //dir.GetFiles()
+                var fileList = GetFiles(dir);
+                //var fileList = dir.GetFiles("*.*", System.IO.SearchOption.AllDirectories);
 
                 int skipChrs = SourceLocation.Length;
                 System.Text.RegularExpressions.Regex regex;
@@ -503,20 +521,15 @@ namespace DuplicateFinder.ViewModel
                 int i = 0;
                 int percent = 0;
                 double imax = fileList.Count();
-                ConcurrentDictionary<Int64, ConcurrentBag<ZlpFileInfo>> fileGroupAll = new ConcurrentDictionary<long, ConcurrentBag<ZlpFileInfo>>();
-                Parallel.ForEach(fileList, new ParallelOptions{ MaxDegreeOfParallelism = 100 }, (f) =>
+                ConcurrentDictionary<Int64, ConcurrentBag<FileInfo>> fileGroupAll = new ConcurrentDictionary<long, ConcurrentBag<FileInfo>>();
+                Parallel.ForEach(fileList, (f) =>
                 {
-                    if (i % 10 == 0)
-                    {
-                        InfoProgress = "Detecting Potential Duplicates " + i + "/" + imax;
-                        percent = Convert.ToInt32((i / imax) * 50);
-                        if (percent > PgsVal) PgsVal = percent;
-                    }
+                    InfoProgress = "Detecting Potential Duplicates " + i + "/" + imax;
                     if (!regex.IsMatch(f.FullName))
                     {
                         if (!fileGroupAll.ContainsKey(f.Length))
                         {
-                            fileGroupAll.TryAdd(f.Length, new ConcurrentBag<ZlpFileInfo>());
+                            fileGroupAll.TryAdd(f.Length, new ConcurrentBag<FileInfo>());
                         }
                         fileGroupAll[f.Length].Add(f);
                     }
@@ -526,8 +539,8 @@ namespace DuplicateFinder.ViewModel
                 var fileGroup = from f in fileGroupAll
                                  where f.Value.Count > 1
                                  select f.Value;
-                percent = 50;
-                PgsVal = 50;
+                percent = 0;
+                PgsVal = 0;
                 imax = 0;
                 i = 0;
                 var queryLengthDupsList = fileGroup.ToList();
@@ -558,7 +571,7 @@ namespace DuplicateFinder.ViewModel
                                 //Set some inits and set the percentage for the progress bar
                                 Interlocked.Increment(ref i);
                                 InfoProgress = "Processing Files " + i + "/" + imax;
-                                percent = Convert.ToInt32((i / imax) * 50) + 50;
+                                percent = Convert.ToInt32((i / imax) * 100);
                                 if (percent > PgsVal) PgsVal = percent;
 
                                 //Set the display name to the first file in the list
@@ -639,7 +652,8 @@ namespace DuplicateFinder.ViewModel
         {
             Ookii.Dialogs.Wpf.VistaFolderBrowserDialog fd = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog();
             fd.Description = "Select Folder with Links";
-            ZlpDirectoryInfo dir = new ZlpDirectoryInfo(startPath);
+            if (startPath == "") startPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            DirectoryInfo dir = new DirectoryInfo(startPath);
             if (startPath != null && dir.Exists) fd.SelectedPath = startPath;
             if (fd.ShowDialog() == true)
             {
@@ -662,7 +676,7 @@ namespace DuplicateFinder.ViewModel
             {
                 try
                 {
-                    ZlpFileInfo file = new ZlpFileInfo(f);
+                    FileInfo file = new FileInfo(f);
                     if (file.Exists) file.Delete();
                     DupFilesList.Remove(f);
                 }
@@ -681,7 +695,7 @@ namespace DuplicateFinder.ViewModel
         {
             try
             {
-                ZlpFileInfo file = new ZlpFileInfo(DupFileSelected);
+                FileInfo file = new FileInfo(DupFileSelected);
                 if (file.Exists) file.Delete();
                 DupFilesList.Remove(DupFileSelected);
                 DupSelected.filesList = DupFilesList;
