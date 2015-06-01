@@ -1,7 +1,7 @@
 ﻿using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.Command;
 using System;
-using System.IO;
+//using System.IO;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -11,6 +11,9 @@ using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using System.Windows.Media.Imaging;
+using ZetaLongPaths;
+using System.Diagnostics;
+//using Delimon.Win32.IO;
 
 namespace DuplicateFinder.ViewModel
 {
@@ -42,8 +45,7 @@ namespace DuplicateFinder.ViewModel
     /// </summary>
     public class MainViewModel : ViewModelBase
     {
-        public string DefaultImage = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),"./res/picture.png");
-
+        public string DefaultImage = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),"./res/picture.png");
         #region Public Vars
 
         #region InfoProgress
@@ -113,6 +115,34 @@ namespace DuplicateFinder.ViewModel
                 if (_SourceLocation == value) return;
                 _SourceLocation = value;
                 RaisePropertyChanged(SourceLocationName);
+            }
+        }
+        #endregion
+        #region FilterMask
+        public const string FilterMaskName = "FilterMask";
+        private string _FilterMask;
+        public string FilterMask
+        {
+            get { return _FilterMask; }
+            set
+            {
+                if (_FilterMask == value) return;
+                _FilterMask = value;
+                RaisePropertyChanged(FilterMaskName);
+            }
+        }
+        #endregion
+        #region RegexChecked
+        public const string RegexCheckedName = "RegexChecked";
+        private bool _RegexChecked;
+        public bool RegexChecked
+        {
+            get { return _RegexChecked; }
+            set
+            {
+                if (_RegexChecked == value) return;
+                _RegexChecked = value;
+                RaisePropertyChanged(RegexCheckedName);
             }
         }
         #endregion
@@ -230,53 +260,61 @@ namespace DuplicateFinder.ViewModel
         #endregion
         
         #endregion
-        
         #region Private Vars
         private Dispatcher dispatch;
-        MemoryStream imageMemoryStream;
+        System.IO.MemoryStream imageMemoryStream;
         #endregion
         /// <summary>
         /// Initializes a new instance of the MainViewModel class.
         /// </summary>
         public MainViewModel()
         {
+            //Init Versions, titles and such
             dispatch = App.Current.Dispatcher;
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
-            
             TitleString = "Duplicate Picutre File Resolver " + version;
+            DupList = new ObservableCollection<DuplicateFile>();
+            DupFilesList = new ObservableCollection<string>();
+            
+            //Commands
             GetSourceLocationCommand = new RelayCommand(GetSourceExecute, () => true);
             KeepSelectedCommand = new RelayCommand(KeepSelectedExecute, () => true);
             DeleteSelectedCommand = new RelayCommand(DeleteSelectedExecute, () => true);
             StopCommand = new RelayCommand(StopExectute, () => true);
-            
-            DupList = new ObservableCollection<DuplicateFile>();
-            DupFilesList = new ObservableCollection<string>();
-
-            
             ScanCommand = new RelayCommand(ScanExecute, () => true);
+
+            //Init the worker thread information
             scanWorker = new BackgroundWorker();
             scanWorker.WorkerSupportsCancellation = true;
             scanWorker.DoWork += new DoWorkEventHandler(scanPath_DoWork);
             scanWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(scanPath_Completed);
             scanWorker.WorkerReportsProgress = true;
             
+            //Catch property changes
             this.PropertyChanged += MainViewModel_PropertyChanged;
             
+            //Get the previous directory location specified
             if (Properties.Settings.Default.SourceLocation != string.Empty) SourceLocation = Properties.Settings.Default.SourceLocation;
             
+            //If it is the standard runtime then load the default image, if not dont.  It was causing the xaml debugger to crash.
             if (System.ComponentModel.LicenseManager.UsageMode == LicenseUsageMode.Runtime) LoadImage(DefaultImage);
         }
 
-        void ImageSource_Changed(object sender, EventArgs e)
+        //Closes the memory stream on the previous image.
+        private void ImageSource_Changed(object sender, EventArgs e)
         {
             //Try to dispose of the image memory stream on image change
             if (imageMemoryStream != null)
             {
                 try
                 {
+                    imageMemoryStream.Close();
                     imageMemoryStream.Dispose();
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    DebugBreak();
+                }
             }
             ImageSource.Changed -= ImageSource_Changed;
         }
@@ -290,14 +328,16 @@ namespace DuplicateFinder.ViewModel
                     //If the source changes save it for next time
                     Properties.Settings.Default.SourceLocation = SourceLocation;
                     Properties.Settings.Default.Save();
-                    if (Directory.Exists(SourceLocation)) ScanEnabled = true;
+                    ZlpDirectoryInfo sourceDir = new ZlpDirectoryInfo(SourceLocation);
+                    if (sourceDir.Exists) ScanEnabled = true;
                     else ScanEnabled = false;
                     break;
 
                 case DupSelectedName:
                     if (DupSelected != null)
-                    {
-                        if (File.Exists(DupSelected.filesList[0]))
+                    { 
+                        ZlpFileInfo f = new ZlpFileInfo(DupSelected.filesList[0]);
+                        if (f.Exists)
                         {
                             //Set the files list
                             DupFilesList = DupSelected.filesList;
@@ -345,18 +385,19 @@ namespace DuplicateFinder.ViewModel
         
         private void LoadImage(string path)
         {
-            if (File.Exists(path))
+            ZlpFileInfo file = new ZlpFileInfo(path);
+            if (file.Exists)
             {
-                MemoryStream ms;
+                System.IO.MemoryStream ms;
                 //Cache File
-                using (FileStream f = new FileStream(path, FileMode.Open, FileAccess.Read))
+                using (System.IO.FileStream f = file.OpenRead())
                 {
                     byte[] bytes;
-                    using (BinaryReader br = new BinaryReader(f))
+                    using (System.IO.BinaryReader br = new System.IO.BinaryReader(f))
                     {
                         bytes = br.ReadBytes((int)f.Length);
                     }
-                    ms = new MemoryStream(bytes);
+                    ms = new System.IO.MemoryStream(bytes);
                 }
                 int angle = 0;
                 TransformedBitmap timage = new TransformedBitmap();
@@ -418,106 +459,172 @@ namespace DuplicateFinder.ViewModel
             }
         }
 
+        private void scanPath_DoWork(object sender, DoWorkEventArgs e)
+        {
+            try
+            {
+                PgsVal = 0;
+                dispatch.Invoke(() => DupList.Clear());
+
+                //Get Listing of all files and files in sub directories
+                InfoProgress = "Getting File List";
+                ZlpDirectoryInfo dir = new ZlpDirectoryInfo(SourceLocation);
+                var fileList = dir.GetFiles("*.*", System.IO.SearchOption.AllDirectories);
+
+                int skipChrs = SourceLocation.Length;
+                System.Text.RegularExpressions.Regex regex;
+                //if we have no filter then match everything
+                if (FilterMask == string.Empty || FilterMask == null)
+                {
+                    regex = new System.Text.RegularExpressions.Regex("^$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                }
+                else
+                {
+                    //If we have a wildcard, create that, otherwise use the regex
+                    if (!RegexChecked)
+                    {
+                        Helpers.Wildcard wildcard = new Helpers.Wildcard(FilterMask, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        regex = wildcard;
+                    }
+                    else
+                    {
+                        try
+                        {
+                            regex = new System.Text.RegularExpressions.Regex(FilterMask, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        }
+                        catch
+                        {
+                            regex = new System.Text.RegularExpressions.Regex("^$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        }
+                    }
+                }
+
+                //Group Files into groups based on exact lengths (Cant Be the Same if their now the same length).  I didnt use linq asparallel as it was causing issues wiht the long file name lib
+                int i = 0;
+                int percent = 0;
+                double imax = fileList.Count();
+                ConcurrentDictionary<Int64, ConcurrentBag<ZlpFileInfo>> fileGroupAll = new ConcurrentDictionary<long, ConcurrentBag<ZlpFileInfo>>();
+                Parallel.ForEach(fileList, new ParallelOptions{ MaxDegreeOfParallelism = 100 }, (f) =>
+                {
+                    if (i % 10 == 0)
+                    {
+                        InfoProgress = "Detecting Potential Duplicates " + i + "/" + imax;
+                        percent = Convert.ToInt32((i / imax) * 50);
+                        if (percent > PgsVal) PgsVal = percent;
+                    }
+                    if (!regex.IsMatch(f.FullName))
+                    {
+                        if (!fileGroupAll.ContainsKey(f.Length))
+                        {
+                            fileGroupAll.TryAdd(f.Length, new ConcurrentBag<ZlpFileInfo>());
+                        }
+                        fileGroupAll[f.Length].Add(f);
+                    }
+                    Interlocked.Increment(ref i);
+                });
+                InfoProgress = "Detecting Potential Duplicates - Completing List";
+                var fileGroup = from f in fileGroupAll
+                                 where f.Value.Count > 1
+                                 select f.Value;
+                percent = 50;
+                PgsVal = 50;
+                imax = 0;
+                i = 0;
+                var queryLengthDupsList = fileGroup.ToList();
+                queryLengthDupsList.ForEach((b) => { imax = imax + b.Count(); });
+
+                //Start Processing
+                InfoProgress = "Processing Files";
+                Xam.Plugins.ManageSleep.SleepMode sleep = new Xam.Plugins.ManageSleep.SleepMode();
+                sleep.DoWithoutSleep(() =>
+                {
+                    foreach (var fg in queryLengthDupsList)
+                    {
+                        if (scanWorker.CancellationPending) break;
+                        //Create a new set of dups
+                        DuplicateFile d = new DuplicateFile();
+                        d.displayName = string.Empty;
+
+                        //Calculate hashs  
+                        object hashLock = new object();
+                        byte[] hash = null;
+                        byte[] hash1 = null;
+                        ConcurrentBag<string> tmpFiles = new ConcurrentBag<string>();
+                        //For every file in the list of files iwth the same length
+                        Parallel.ForEach(fg, (f) =>
+                        {
+                            if (!scanWorker.CancellationPending)
+                            {
+                                //Set some inits and set the percentage for the progress bar
+                                Interlocked.Increment(ref i);
+                                InfoProgress = "Processing Files " + i + "/" + imax;
+                                percent = Convert.ToInt32((i / imax) * 50) + 50;
+                                if (percent > PgsVal) PgsVal = percent;
+
+                                //Set the display name to the first file in the list
+                                lock (d.displayName)
+                                {
+                                    if (d.displayName == string.Empty) d.displayName = f.Name;
+                                }
+                                //Open the file and calculate the hash.  If its the same, add it to the list of files.
+                                using (System.IO.FileStream fi = f.OpenRead())
+                                using (System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed())
+                                {
+                                    hash = sha1.ComputeHash(fi);
+                                    fi.Close();
+                                }
+                                lock (hashLock)
+                                {
+                                    //If the stored hash (of the first scanned item) is not null
+                                    if (hash1 != null)
+                                    {
+                                        //Compare and add it ot the list it is the same.
+                                        if (hash1.SequenceEqual(hash)) tmpFiles.Add(f.FullName);
+                                    }
+                                    else
+                                    {
+                                        //Otherwise store this one as the first hash and add it to the list
+                                        hash1 = hash;
+                                        tmpFiles.Add(f.FullName);
+                                    }
+                                }
+                            }
+                        });
+                        //Do we have dups?
+                        if (tmpFiles.Count() > 1)
+                        {
+                            //Add our files list
+                            d.filesList = new ObservableCollection<string>(tmpFiles.ToList());
+                            d.filesList.CollectionChanged += FilesList_CollectionChanged;
+                            //Add the duplicate to the dup collection
+                            lock (DupList)
+                            {
+                                dispatch.Invoke(() => DupList.Add(d));
+                            }
+                        }
+                    }
+                });
+                PgsVal = 100;
+                if (scanWorker.CancellationPending) InfoProgress = "Canceled";
+                else InfoProgress = "Done";
+            }
+            catch
+            {
+                InfoProgress = "Error";
+            }
+
+        }
+
         private void scanPath_Completed(object sender, RunWorkerCompletedEventArgs e)
         {
             ScanEnabled = true;
             StopEnabled = false;
         }
 
-        private void scanPath_DoWork(object sender, DoWorkEventArgs e)
+        public RelayCommand StopCommand { get; internal set; }
+        private void StopExectute()
         {
-            PgsVal = 0;
-            dispatch.Invoke(() => DupList.Clear());
-
-            //Get Listing of all files and files in sub directories
-            InfoProgress = "Getting File List";
-            DirectoryInfo dir = new DirectoryInfo(SourceLocation);
-            IEnumerable<FileInfo> fileList = dir.GetFiles("*.*", SearchOption.AllDirectories);
-
-            int skipChrs = SourceLocation.Length;
-
-            //Group Files into groups based on exact lengths (Cant Be the Same if their now the same length)
-            var queryLengthDups =
-                from file in fileList.AsParallel()
-                group file by file.Length into fileGroup
-                where fileGroup.Count() != 1
-                select fileGroup;
-            //Set Max and number of dups to process.
-            int i = 0;
-            double imax = 0;
-            var queryLengthDupsList = queryLengthDups.ToList();
-            queryLengthDupsList.ForEach((b) => { imax = imax + b.Count(); });
-            int percent = 0;
-
-            //Start Processing
-            foreach (var fg in queryLengthDups)
-            {
-                if (scanWorker.CancellationPending) break;
-                //Create a new set of dups
-                DuplicateFile d = new DuplicateFile();
-                d.displayName = string.Empty;
-
-                //Calculate hashs  
-                object hashLock = new object();
-                byte[] hash = null;
-                byte[] hash1 = null;
-                ConcurrentBag<string> tmpFiles = new ConcurrentBag<string>();
-                //For every file in the list of files iwth the same length
-                Parallel.ForEach(fg, (f) =>
-                {
-                    if (!scanWorker.CancellationPending)
-                    {
-                        //Set some inits and set the percentage for the progress bar
-                        Interlocked.Increment(ref i);
-                        InfoProgress = "Processing Files " + i + "/" + imax;
-                        percent = Convert.ToInt32((i / imax) * 100);
-                        if (percent > PgsVal) PgsVal = percent;
-
-                        //Set the display name to the first file in the list
-                        lock (d.displayName)
-                        {
-                            if (d.displayName == string.Empty) d.displayName = f.Name;
-                        }
-                        //Open the file and calculate the hash.  If its the same, add it to the list of files.
-                        using (FileStream fi = f.OpenRead())
-                        using (System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed())
-                        {
-                            hash = sha1.ComputeHash(fi);
-                            fi.Close();
-                        }
-                        lock(hashLock)
-                        {
-                            //If the stored hash (of the first scanned item) is not null
-                            if (hash1 != null)
-                            {
-                                //Compare and add it ot the list it is the same.
-                                if (hash1.SequenceEqual(hash)) tmpFiles.Add(f.FullName);
-                            }
-                            else
-                            {
-                                //Otherwise store this one as the first hash and add it to the list
-                                hash1 = hash;
-                                tmpFiles.Add(f.FullName);
-                            }
-                        }
-                    }
-                });
-                //Do we have dups?
-                if (tmpFiles.Count() > 1)
-                {
-                    //Add our files list
-                    d.filesList = new ObservableCollection<string>(tmpFiles.ToList());
-                    d.filesList.CollectionChanged += FilesList_CollectionChanged;
-                    //Add the duplicate to the dup collection
-                    lock(DupList)
-                    {
-                        dispatch.Invoke(() => DupList.Add(d));
-                    }
-                }
-            }
-            if (scanWorker.CancellationPending) InfoProgress = "Canceled";
-            else InfoProgress = "Done";
-
+            scanWorker.CancelAsync();
         }
         #endregion
 
@@ -532,7 +639,8 @@ namespace DuplicateFinder.ViewModel
         {
             Ookii.Dialogs.Wpf.VistaFolderBrowserDialog fd = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog();
             fd.Description = "Select Folder with Links";
-            if (startPath != null && Directory.Exists(startPath)) fd.SelectedPath = startPath;
+            ZlpDirectoryInfo dir = new ZlpDirectoryInfo(startPath);
+            if (startPath != null && dir.Exists) fd.SelectedPath = startPath;
             if (fd.ShowDialog() == true)
             {
                 return fd.SelectedPath;
@@ -554,7 +662,8 @@ namespace DuplicateFinder.ViewModel
             {
                 try
                 {
-                    if (File.Exists(f)) File.Delete(f);
+                    ZlpFileInfo file = new ZlpFileInfo(f);
+                    if (file.Exists) file.Delete();
                     DupFilesList.Remove(f);
                 }
                 catch (Exception e)
@@ -572,7 +681,8 @@ namespace DuplicateFinder.ViewModel
         {
             try
             {
-                if (File.Exists(DupFileSelected)) File.Delete(DupFileSelected);
+                ZlpFileInfo file = new ZlpFileInfo(DupFileSelected);
+                if (file.Exists) file.Delete();
                 DupFilesList.Remove(DupFileSelected);
                 DupSelected.filesList = DupFilesList;
             }
@@ -581,12 +691,6 @@ namespace DuplicateFinder.ViewModel
                 System.Windows.MessageBox.Show("Error deleting file:" + Environment.NewLine + e.Message, "Error Copying Files", System.Windows.MessageBoxButton.OK);
             }
             TestDupItem();
-        }
-
-        public RelayCommand StopCommand { get; internal set; }  
-        private void StopExectute()
-        {
-            scanWorker.CancelAsync();
         }
 
         private void TestDupItem()
@@ -600,5 +704,12 @@ namespace DuplicateFinder.ViewModel
             }
         }
         #endregion
+
+        [Conditional("DEBUG")]
+        void DebugBreak()
+        {
+            if (System.Diagnostics.Debugger.IsAttached)
+                System.Diagnostics.Debugger.Break();
+        }
     }
 }
