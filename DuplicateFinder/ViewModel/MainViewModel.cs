@@ -104,6 +104,20 @@ namespace DuplicateFinder.ViewModel
             }
         }
         #endregion
+        #region GetSourceLocationEnabled
+        public const string GetSourceLocationEnabledName = "GetSourceLocationEnabled";
+        private bool _GetSourceLocationEnabled;
+        public bool GetSourceLocationEnabled
+        {
+            get { return _GetSourceLocationEnabled; }
+            set
+            {
+                if (_GetSourceLocationEnabled == value) return;
+                _GetSourceLocationEnabled = value;
+                RaisePropertyChanged(GetSourceLocationEnabledName);
+            }
+        }
+        #endregion
         #region SourceLocation
         public const string SourceLocationName = "SourceLocation";
         private string _SourceLocation = string.Empty;
@@ -269,6 +283,7 @@ namespace DuplicateFinder.ViewModel
         /// </summary>
         public MainViewModel()
         {
+            GetSourceLocationEnabled = true;
             //Init Versions, titles and such
             dispatch = App.Current.Dispatcher;
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
@@ -450,12 +465,12 @@ namespace DuplicateFinder.ViewModel
         private readonly BackgroundWorker scanWorker;
         private void ScanExecute()
         {
-            ScanEnabled = false;
-            Thread.Sleep(0);
             if (!scanWorker.IsBusy)
             {
+                ScanEnabled = false;
                 scanWorker.RunWorkerAsync();
                 StopEnabled = true;
+                GetSourceLocationEnabled = false;
             }
         }
 
@@ -632,6 +647,7 @@ namespace DuplicateFinder.ViewModel
         {
             ScanEnabled = true;
             StopEnabled = false;
+            GetSourceLocationEnabled = true;
         }
 
         public RelayCommand StopCommand { get; internal set; }

@@ -39,7 +39,7 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <Button Content="..." Grid.Column="2" Margin="4.8,10,10,9.6" Command="{Binding GetSourceLocationCommand, Mode=OneWay}"/>
+        <Button Content="..." Grid.Column="2" Margin="4.8,10,10,9.6" Command="{Binding GetSourceLocationCommand, Mode=OneWay}" IsEnabled="{Binding GetSourceLocationEnabled}"/>
         <TextBox Grid.Column="1" Margin="10,10,0.2,9.6" TextWrapping="Wrap" IsEnabled="False" Text="{Binding SourceLocation}"/>
         <Label Content="Base Directory:" Margin="10,8,0,9.6"/>
         <Button Content="(Re)Scan" Grid.Column="3" Margin="0,10,9.6,9.6" Command="{Binding ScanCommand, Mode=OneWay}" IsEnabled="{Binding ScanEnabled}"/>
