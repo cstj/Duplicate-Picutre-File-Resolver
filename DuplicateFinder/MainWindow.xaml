@@ -32,9 +32,6 @@
             <ColumnDefinition Width="37"/>
             <ColumnDefinition Width="82"/>
         </Grid.ColumnDefinitions>
-        <Border Margin="10,9.6,9.6,9.6" Grid.Column="1" Grid.Row="3"  BorderThickness="1" BorderBrush="Gray" Grid.ColumnSpan="3">
-            <Image Source="{Binding ImageSource}" />
-        </Border>
         <ListBox Margin="10,39,0,9.6" Grid.Row="2" Grid.RowSpan="2" ItemsSource="{Binding DupList}" SelectedItem="{Binding DupSelected}">
             <ListBox.ItemTemplate>
                 <DataTemplate>
@@ -42,15 +39,12 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <ListBox Grid.Column="1" Margin="10,10,9.6,28.4" Grid.ColumnSpan="3" ItemsSource="{Binding DupFilesList}" SelectedItem="{Binding DupFileSelected}" Grid.Row="2"/>
         <Button Content="..." Grid.Column="2" Margin="4.8,10,10,9.6" Command="{Binding GetSourceLocationCommand, Mode=OneWay}"/>
         <TextBox Grid.Column="1" Margin="10,10,0.2,9.6" TextWrapping="Wrap" IsEnabled="False" Text="{Binding SourceLocation}"/>
         <Label Content="Base Directory:" Margin="10,8,0,9.6"/>
         <Button Content="(Re)Scan" Grid.Column="3" Margin="0,10,9.6,9.6" Command="{Binding ScanCommand, Mode=OneWay}" IsEnabled="{Binding ScanEnabled}"/>
         <ProgressBar Margin="10,0.4,10,4" Grid.Row="4" Grid.ColumnSpan="3" Maximum="100" Minimum="0" Value="{Binding PgsVal}"/>
         <Label Content="Duplicates" Margin="10,0,0,76.4" Height="24" VerticalAlignment="Bottom" Grid.Row="2"/>
-        <Button Content="Delete Selected" Grid.Column="1" Command="{Binding DeleteSelectedCommand, Mode=OneWay}" Grid.Row="2" HorizontalAlignment="Right" Width="109" Height="22" VerticalAlignment="Bottom" Grid.ColumnSpan="3" Margin="0,0,9.6,0.4" IsEnabled="{Binding DeleteFileEnabled}"/>
-        <Button Content="Keep Selected" Grid.Column="1" Margin="0,0,10.2,0.4" Command="{Binding KeepSelectedCommand, Mode=OneWay}" Grid.Row="2" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="109" IsEnabled="{Binding KeepFileEnabled}"/>
         <TextBox TextWrapping="NoWrap" Background="Transparent" HorizontalContentAlignment="Center" Text="{Binding InfoProgress}" Grid.ColumnSpan="3" Margin="10,0.4,10,4" Grid.Row="4"/>
         <Button Content="Stop" Grid.Column="3" Margin="0,0.4,9.6,4" Command="{Binding StopCommand, Mode=OneWay}" IsEnabled="{Binding StopEnabled}" Grid.Row="4"/>
         <Label Content="Exclusion Filter:" Margin="10,7.4,0,10.2" Grid.Row="1"/>
@@ -66,6 +60,34 @@
             </Image.ToolTip>
         </Image>
         <CheckBox Content="Regex" Grid.Column="3" HorizontalAlignment="Left" Margin="1,13.4,0,0" Grid.Row="1" VerticalAlignment="Top" IsChecked="{Binding RegexChecked}"/>
-
+        <Border Grid.Column="1" Margin="10,41.4,9.6,9.6" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="3">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition Height="42"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Content="Delete Selected" Grid.Row="1" Grid.Column="1" Command="{Binding DeleteSelectedCommand, Mode=OneWay}" Margin="5,10,10.4,10" IsEnabled="{Binding DeleteFileEnabled}" />
+                    <Button Content="Keep Selected" Grid.Row="1" Margin="10,10,5,10" Command="{Binding KeepSelectedCommand, Mode=OneWay}" IsEnabled="{Binding KeepFileEnabled}"/>
+                    <ListBox Margin="0,0,0,0" ItemsSource="{Binding DupFilesList}" SelectedItem="{Binding DupFileSelected}" Grid.ColumnSpan="2"/>
+                </Grid>
+                <Border Margin="0,0,0,0" Grid.Row="2" BorderBrush="Gray" BorderThickness="1" Grid.ColumnSpan="2">
+                    <Image Source="{Binding ImageSource}" />
+                </Border>
+                <GridSplitter HorizontalAlignment="Stretch" Margin="0,0,0,0" Grid.Row="1" Grid.ColumnSpan="2" Background="Transparent"/>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="150*" MinHeight="80"/>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="314*" MinHeight="80"/>
+                </Grid.RowDefinitions>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
