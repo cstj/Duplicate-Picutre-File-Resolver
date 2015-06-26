@@ -8,6 +8,7 @@
         Height="561.408"
         Width="739.797"
         Title="{Binding TitleString}"
+        TextOptions.TextFormattingMode="Display"
         DataContext="{Binding Main, Source={StaticResource Locator}}" Icon="pack://siteoforigin:,,,/res/picture.png">
 
     <Window.Resources>
