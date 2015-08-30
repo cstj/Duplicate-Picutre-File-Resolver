@@ -332,6 +332,7 @@ namespace DuplicateFinder.ViewModel
                 }
             }
             ImageSource.Changed -= ImageSource_Changed;
+            GC.Collect();
         }
 
         #region Property Change Events
@@ -357,7 +358,6 @@ namespace DuplicateFinder.ViewModel
                             //Set the files list
                             DupFilesList = DupSelected.filesList;
                             //Set the picture
-
                             LoadImage(DupSelected.filesList[0]);
                             //ImageSource = DupSelected.filesList[0];
                         }
@@ -366,6 +366,7 @@ namespace DuplicateFinder.ViewModel
                     {
                         LoadImage(DefaultImage);
                     }
+                    GC.Collect();
                     break;
                 case DupFileSelectedName:
                     if (DupFileSelected != null)
@@ -596,9 +597,9 @@ namespace DuplicateFinder.ViewModel
                                 }
                                 //Open the file and calculate the hash.  If its the same, add it to the list of files.
                                 using (System.IO.FileStream fi = f.OpenRead())
-                                using (System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed())
+                                using (System.Security.Cryptography.SHA1Managed hashAlgorithm = new System.Security.Cryptography.SHA1Managed())
                                 {
-                                    hash = sha1.ComputeHash(fi);
+                                    hash = hashAlgorithm.ComputeHash(fi);
                                     fi.Close();
                                 }
                                 lock (hashLock)
