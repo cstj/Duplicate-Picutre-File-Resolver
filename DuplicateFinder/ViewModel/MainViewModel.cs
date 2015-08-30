@@ -551,6 +551,7 @@ namespace DuplicateFinder.ViewModel
                     }
                     Interlocked.Increment(ref i);
                 });
+                double totalFiles = imax;
                 InfoProgress = "Detecting Potential Duplicates - Completing List";
                 var fileGroup = from f in fileGroupAll
                                  where f.Value.Count > 1
@@ -635,7 +636,7 @@ namespace DuplicateFinder.ViewModel
                 });
                 PgsVal = 100;
                 if (scanWorker.CancellationPending) InfoProgress = "Canceled";
-                else InfoProgress = "Done";
+                else InfoProgress = "Done - Processed " + totalFiles + " Files (" + DupList.Count().ToString() + " Duplicates in " + i + " Files";
             }
             catch
             {
@@ -678,7 +679,6 @@ namespace DuplicateFinder.ViewModel
             }
             else return startPath;
         }
-
         #endregion
 
         public RelayCommand KeepSelectedCommand { get; private set; }
