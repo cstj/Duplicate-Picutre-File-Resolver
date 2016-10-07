@@ -1,6 +1,4 @@
-﻿using GalaSoft.MvvmLight;
-using GalaSoft.MvvmLight.Command;
-using System;
+﻿using System;
 //using System.IO;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
@@ -11,11 +9,16 @@ using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using System.Windows.Media.Imaging;
-//using ZetaLongPaths;
+using Helpers.MVVMHelpers;
 using System.Diagnostics;
-using Delimon.Win32.IO;
+using Path = Pri.LongPath.Path;
+using Directory = Pri.LongPath.Directory;
+using DirectoryInfo = Pri.LongPath.DirectoryInfo;
+using File = Pri.LongPath.File;
+using FileInfo = Pri.LongPath.FileInfo;
+using Helpers;
 
-namespace DuplicateFinder.ViewModel
+namespace DuplicateFinderLib.ViewModel
 {
 
     public class DuplicateFile
@@ -281,22 +284,22 @@ namespace DuplicateFinder.ViewModel
         /// <summary>
         /// Initializes a new instance of the MainViewModel class.
         /// </summary>
-        public MainViewModel()
+        public MainViewModel(System.Windows.Threading.Dispatcher dispatcher)
         {
             GetSourceLocationEnabled = true;
             //Init Versions, titles and such
-            dispatch = App.Current.Dispatcher;
+            dispatch = dispatcher;
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
             TitleString = "Duplicate Picutre File Resolver " + version;
             DupList = new ObservableCollection<DuplicateFile>();
             DupFilesList = new ObservableCollection<string>();
             
             //Commands
-            GetSourceLocationCommand = new RelayCommand(GetSourceExecute, () => true);
-            KeepSelectedCommand = new RelayCommand(KeepSelectedExecute, () => true);
-            DeleteSelectedCommand = new RelayCommand(DeleteSelectedExecute, () => true);
-            StopCommand = new RelayCommand(StopExectute, () => true);
-            ScanCommand = new RelayCommand(ScanExecute, () => true);
+            GetSourceLocationCommand = new RelayCommand(GetSourceExecute);
+            KeepSelectedCommand = new RelayCommand(KeepSelectedExecute);
+            DeleteSelectedCommand = new RelayCommand(DeleteSelectedExecute);
+            StopCommand = new RelayCommand(StopExectute);
+            ScanCommand = new RelayCommand(ScanExecute);
 
             //Init the worker thread information
             scanWorker = new BackgroundWorker();
@@ -537,7 +540,7 @@ namespace DuplicateFinder.ViewModel
                 int i = 0;
                 int percent = 0;
                 double imax = fileList.Count();
-                ConcurrentDictionary<Int64, ConcurrentBag<FileInfo>> fileGroupAll = new ConcurrentDictionary<long, ConcurrentBag<FileInfo>>();
+                ConcurrentDictionary<Int64, ConcurrentBag<Pri.LongPath.FileInfo>> fileGroupAll = new ConcurrentDictionary<long, ConcurrentBag<FileInfo>>();
                 Parallel.ForEach(fileList, (f) =>
                 {
                     InfoProgress = "Detecting Potential Duplicates " + i + "/" + imax;
@@ -575,46 +578,45 @@ namespace DuplicateFinder.ViewModel
                         DuplicateFile d = new DuplicateFile();
                         d.displayName = string.Empty;
 
-                        //Calculate hashs  
-                        object hashLock = new object();
-                        byte[] hash = null;
+                        //Store for first hash data
+                        byte[] data1 = null;
                         byte[] hash1 = null;
+                        string fileName1 = null;
+
+                        //Get First File Data
                         ConcurrentBag<string> tmpFiles = new ConcurrentBag<string>();
+
+                        FileInfo firstFile = fg.First();
+                        fileName1 = firstFile.FullName;
+                        data1 = File.ReadAllBytes(fileName1);
+                        tmpFiles.Add(fileName1);
+
                         //For every file in the list of files iwth the same length
                         Parallel.ForEach(fg, (f) =>
                         {
-                            if (!scanWorker.CancellationPending)
+                            if (f.FullName != fileName1)
                             {
-                                //Set some inits and set the percentage for the progress bar
-                                Interlocked.Increment(ref i);
-                                InfoProgress = "Processing Files " + i + "/" + imax;
-                                percent = Convert.ToInt32((i / imax) * 100);
-                                if (percent > PgsVal) PgsVal = percent;
+                                if (!scanWorker.CancellationPending)
+                                {
+                                    //Set some inits and set the percentage for the progress bar
+                                    Interlocked.Increment(ref i);
+                                    InfoProgress = "Processing Files " + i + "/" + imax;
+                                    percent = Convert.ToInt32((i / imax) * 100);
+                                    if (percent > PgsVal) PgsVal = percent;
 
-                                //Set the display name to the first file in the list
-                                lock (d.displayName)
-                                {
-                                    if (d.displayName == string.Empty) d.displayName = f.Name;
-                                }
-                                //Open the file and calculate the hash.  If its the same, add it to the list of files.
-                                using (System.IO.FileStream fi = f.OpenRead())
-                                using (System.Security.Cryptography.SHA1Managed hashAlgorithm = new System.Security.Cryptography.SHA1Managed())
-                                {
-                                    hash = hashAlgorithm.ComputeHash(fi);
-                                    fi.Close();
-                                }
-                                lock (hashLock)
-                                {
-                                    //If the stored hash (of the first scanned item) is not null
-                                    if (hash1 != null)
+                                    //Set the display name to the first file in the list
+                                    lock (d.displayName)
                                     {
-                                        //Compare and add it ot the list it is the same.
-                                        if (hash1.SequenceEqual(hash)) tmpFiles.Add(f.FullName);
+                                        if (d.displayName == string.Empty) d.displayName = f.Name;
                                     }
-                                    else
+
+                                    //Open the file and calculate the hash.  If its the same, add it to the list of files.
+                                    byte[] data = null;
+                                    data = File.ReadAllBytes(f.FullName);
+
+                                    //Compare and add it ot the list it is the same.
+                                    if (data1.SequenceEqual(data))
                                     {
-                                        //Otherwise store this one as the first hash and add it to the list
-                                        hash1 = hash;
                                         tmpFiles.Add(f.FullName);
                                     }
                                 }

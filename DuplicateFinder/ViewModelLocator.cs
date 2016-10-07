@@ -9,11 +9,10 @@
   DataContext="{Binding Source={StaticResource Locator}, Path=ViewModelName}"
 */
 
-using GalaSoft.MvvmLight;
-using GalaSoft.MvvmLight.Ioc;
+using DuplicateFinderLib;
 using Microsoft.Practices.ServiceLocation;
 
-namespace DuplicateFinder.ViewModel
+namespace DuplicateFinder
 {
     /// <summary>
     /// This class contains static references to all the view models in the
@@ -24,32 +23,24 @@ namespace DuplicateFinder.ViewModel
     /// </summary>
     public class ViewModelLocator
     {
-        static ViewModelLocator()
+        System.Windows.Threading.Dispatcher dispatcher;
+        public ViewModelLocator()
         {
-            ServiceLocator.SetLocatorProvider(() => SimpleIoc.Default);
-
-            SimpleIoc.Default.Register<MainViewModel>();
+            dispatcher = System.Windows.Application.Current.Dispatcher;
         }
 
+
+        private Main _Main;
         /// <summary>
         /// Gets the Main property.
         /// </summary>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance",
-            "CA1822:MarkMembersAsStatic",
-            Justification = "This non-static member is needed for data binding purposes.")]
-        public MainViewModel Main
+        public Main Main
         {
             get
             {
-                return ServiceLocator.Current.GetInstance<MainViewModel>();
+                if (_Main == null) _Main = new Main(dispatcher);
+                return _Main;
             }
-        }
-
-        /// <summary>
-        /// Cleans up all the resources.
-        /// </summary>
-        public static void Cleanup()
-        {
         }
     }
 }

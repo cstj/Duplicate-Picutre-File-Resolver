@@ -42,7 +42,7 @@ class Script
         //Some Defaults for the builder
         Compiler.PreserveTempFiles = false;
         Compiler.AllowNonRtfLicense = false;
-
+         
         //The Builder Locations (Assumes you have included wix as a package.
         Compiler.WixLocation = System.IO.Path.Combine(Application.StartupPath, @"..\..\..\packages\WiX.3.9.2\tools");
         Compiler.WixSdkLocation = System.IO.Path.Combine(Compiler.WixLocation, "sdk");

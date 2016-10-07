@@ -1,5 +1,4 @@
 ﻿using System.Windows;
-using GalaSoft.MvvmLight.Threading;
 
 namespace DuplicateFinder
 {
@@ -8,9 +7,5 @@ namespace DuplicateFinder
     /// </summary>
     public partial class App : Application
     {
-        static App()
-        {
-            DispatcherHelper.Initialize();
-        }
     }
 }

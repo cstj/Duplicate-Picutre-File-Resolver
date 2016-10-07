@@ -1,0 +1,3 @@
+[submodule "extlib/CSharpHelpers"]
+	path = extlib/CSharpHelpers
+	url = git@github.com:cstj/CSharpHelpers.git

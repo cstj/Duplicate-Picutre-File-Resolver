@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DuplicateFinder", "DuplicateFinder\DuplicateFinder.csproj", "{99AB8036-8BA5-494E-8229-14995ED9E8FB}"
 EndProject
@@ -9,6 +9,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DuplicateFinderWixSharp", "
 	ProjectSection(ProjectDependencies) = postProject
 		{99AB8036-8BA5-494E-8229-14995ED9E8FB} = {99AB8036-8BA5-494E-8229-14995ED9E8FB}
 	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Ext Libs", "Ext Libs", "{346D18CA-7B7F-422D-A0BF-30B99E9204E3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Helpers.MVVMHelpers", "extlib\CSharpHelpers\Helpers.MVVMHelpers\Helpers.MVVMHelpers.csproj", "{49366A80-ADA4-46EB-8FBB-E1828072CC7E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DuplicateFinderLib", "DuplicateFinderLib\DuplicateFinderLib.csproj", "{6AB4E971-AA33-4698-9CCE-6033B5508D97}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -40,8 +46,35 @@ Global
 		{9886CE58-4E3B-4579-A9A0-EACDA946FB35}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{9886CE58-4E3B-4579-A9A0-EACDA946FB35}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{9886CE58-4E3B-4579-A9A0-EACDA946FB35}.Release|x86.ActiveCfg = Release|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Debug|x86.Build.0 = Debug|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Release|x86.ActiveCfg = Release|Any CPU
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E}.Release|x86.Build.0 = Release|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Debug|x86.Build.0 = Debug|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Release|x86.ActiveCfg = Release|Any CPU
+		{6AB4E971-AA33-4698-9CCE-6033B5508D97}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{49366A80-ADA4-46EB-8FBB-E1828072CC7E} = {346D18CA-7B7F-422D-A0BF-30B99E9204E3}
 	EndGlobalSection
 EndGlobal
