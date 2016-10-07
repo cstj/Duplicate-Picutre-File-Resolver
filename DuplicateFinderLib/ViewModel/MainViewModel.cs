@@ -569,6 +569,7 @@ namespace DuplicateFinderLib.ViewModel
                 //Start Processing
                 InfoProgress = "Processing Files";
                 Xam.Plugins.ManageSleep.SleepMode sleep = new Xam.Plugins.ManageSleep.SleepMode();
+                int foundDups = 1;
                 sleep.DoWithoutSleep(() =>
                 {
                     foreach (var fg in queryLengthDupsList)
@@ -580,7 +581,6 @@ namespace DuplicateFinderLib.ViewModel
 
                         //Store for first hash data
                         byte[] data1 = null;
-                        byte[] hash1 = null;
                         string fileName1 = null;
 
                         //Get First File Data
@@ -590,6 +590,9 @@ namespace DuplicateFinderLib.ViewModel
                         fileName1 = firstFile.FullName;
                         data1 = File.ReadAllBytes(fileName1);
                         tmpFiles.Add(fileName1);
+
+                        d.displayName = "Group " + foundDups;
+                        Interlocked.Increment(ref foundDups);
 
                         //For every file in the list of files iwth the same length
                         Parallel.ForEach(fg, (f) =>
@@ -603,12 +606,6 @@ namespace DuplicateFinderLib.ViewModel
                                     InfoProgress = "Processing Files " + i + "/" + imax;
                                     percent = Convert.ToInt32((i / imax) * 100);
                                     if (percent > PgsVal) PgsVal = percent;
-
-                                    //Set the display name to the first file in the list
-                                    lock (d.displayName)
-                                    {
-                                        if (d.displayName == string.Empty) d.displayName = f.Name;
-                                    }
 
                                     //Open the file and calculate the hash.  If its the same, add it to the list of files.
                                     byte[] data = null;
