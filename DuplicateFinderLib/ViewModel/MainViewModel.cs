@@ -570,69 +570,83 @@ namespace DuplicateFinderLib.ViewModel
                 InfoProgress = "Processing Files";
                 Xam.Plugins.ManageSleep.SleepMode sleep = new Xam.Plugins.ManageSleep.SleepMode();
                 int foundDups = 1;
+                object foundLock = new object();
+
                 sleep.DoWithoutSleep(() =>
                 {
-                    foreach (var fg in queryLengthDupsList)
+                    Parallel.ForEach(queryLengthDupsList, new ParallelOptions { MaxDegreeOfParallelism = 2 } , (fg) =>
+                    //foreach (var fg in queryLengthDupsList)
                     {
-                        if (scanWorker.CancellationPending) break;
-                        //Create a new set of dups
-                        DuplicateFile d = new DuplicateFile();
-                        d.displayName = string.Empty;
-
-                        //Store for first hash data
-                        byte[] data1 = null;
-                        string fileName1 = null;
-
-                        //Get First File Data
-                        ConcurrentBag<string> tmpFiles = new ConcurrentBag<string>();
-
-                        FileInfo firstFile = fg.First();
-                        fileName1 = firstFile.FullName;
-                        data1 = File.ReadAllBytes(fileName1);
-                        tmpFiles.Add(fileName1);
-
-                        d.displayName = "Group " + foundDups;
-                        Interlocked.Increment(ref foundDups);
-
-                        //For every file in the list of files iwth the same length
-                        Parallel.ForEach(fg, (f) =>
+                        if (!scanWorker.CancellationPending)
                         {
-                            if (f.FullName != fileName1)
+                            //Create a new set of dups
+                            DuplicateFile d = new DuplicateFile();
+                            d.displayName = string.Empty;
+
+                            //Store for first hash data
+                            byte[] data1 = null;
+                            string fileName1 = null;
+
+                            //Get First File Data
+                            ConcurrentBag<string> tmpFiles = new ConcurrentBag<string>();
+
+                            FileInfo firstFile = fg.First();
+                            fileName1 = firstFile.FullName;
+                            data1 = File.ReadAllBytes(fileName1);
+                            tmpFiles.Add(fileName1);
+
+                            lock (foundLock)
                             {
-                                if (!scanWorker.CancellationPending)
+                                d.displayName = "Group " + foundDups + "(" + System.IO.Path.GetExtension(fileName1) + " - " + firstFile.LengthHumanReadable() + ")";
+                                foundDups++;
+                            }
+                            //For every file in the list of files iwth the same length
+                            Parallel.ForEach(fg, new ParallelOptions { MaxDegreeOfParallelism = 2 }, (f) =>
+                            {
+                                if (f.FullName != fileName1)
                                 {
-                                    //Set some inits and set the percentage for the progress bar
-                                    Interlocked.Increment(ref i);
-                                    InfoProgress = "Processing Files " + i + "/" + imax;
-                                    percent = Convert.ToInt32((i / imax) * 100);
-                                    if (percent > PgsVal) PgsVal = percent;
-
-                                    //Open the file and calculate the hash.  If its the same, add it to the list of files.
-                                    byte[] data = null;
-                                    data = File.ReadAllBytes(f.FullName);
-
-                                    //Compare and add it ot the list it is the same.
-                                    if (data1.SequenceEqual(data))
+                                    if (!scanWorker.CancellationPending)
                                     {
-                                        tmpFiles.Add(f.FullName);
+                                        //Set some inits and set the percentage for the progress bar
+                                        Interlocked.Increment(ref i);
+                                        InfoProgress = "Processing Files " + i + "/" + imax;
+                                        percent = Convert.ToInt32((i / imax) * 100);
+                                        if (percent > PgsVal) PgsVal = percent;
+
+                                        //Open the file and calculate the hash.  If its the same, add it to the list of files.
+                                        using (var fs = f.OpenRead())
+                                        {
+                                            //byte[] data = null;
+                                            //data = File.ReadAllBytes(f.FullName);
+
+                                            //Compare and add it ot the list it is the same.
+                                            if (data1.SequenceEqual(fs))
+                                            {
+                                                tmpFiles.Add(f.FullName);
+                                            }
+                                        }
                                     }
                                 }
-                            }
-                        });
-                        //Do we have dups?
-                        if (tmpFiles.Count() > 1)
-                        {
-                            //Add our files list
-                            d.filesList = new ObservableCollection<string>(tmpFiles.ToList());
-                            d.filesList.CollectionChanged += FilesList_CollectionChanged;
-                            //Add the duplicate to the dup collection
-                            lock (DupList)
+                            });
+                            //Do we have dups?
+                            if (tmpFiles.Count() > 1)
                             {
-                                dispatch.Invoke(() => DupList.Add(d));
+                                //Add our files list
+                                ObservableCollection<string> tmpObList = new ObservableCollection<string>();
+                                tmpFiles.ToList().ForEach(l => tmpObList.Add(l));
+                                d.filesList = tmpObList;
+                                d.filesList.CollectionChanged += FilesList_CollectionChanged;
+                                //Add the duplicate to the dup collection
+                                lock (DupList)
+                                {
+                                    dispatch.Invoke(() => DupList.Add(d));
+                                }
                             }
+                            data1 = null;
                         }
-                    }
+                    });
                 });
+                GC.Collect();
                 PgsVal = 100;
                 if (scanWorker.CancellationPending) InfoProgress = "Canceled";
                 else InfoProgress = "Done - Processed " + totalFiles + " Files (" + DupList.Count().ToString() + " Duplicates in " + i + " Files";
