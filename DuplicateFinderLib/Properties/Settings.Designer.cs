@@ -34,5 +34,16 @@ namespace DuplicateFinderLib.Properties {
                 this["SourceLocation"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public global::System.Collections.Specialized.StringCollection FilterList {
+            get {
+                return ((global::System.Collections.Specialized.StringCollection)(this["FilterList"]));
+            }
+            set {
+                this["FilterList"] = value;
+            }
+        }
     }
 }

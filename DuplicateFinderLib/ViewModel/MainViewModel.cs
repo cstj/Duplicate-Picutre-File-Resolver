@@ -27,6 +27,17 @@ namespace DuplicateFinderLib.ViewModel
         public ObservableCollection<String> filesList { get; set; }
     }
 
+    public class FilterItem
+    {
+        public string filter { get; set; }
+        public System.Text.RegularExpressions.Regex regex { get; set; }
+
+        public override string ToString()
+        {
+            return filter;
+        }
+    }
+
     public enum ExifOrientations
     {
         None = 0,
@@ -275,7 +286,27 @@ namespace DuplicateFinderLib.ViewModel
             }
         }
         #endregion
-        
+
+        public const string FilterListName = "FilterList";
+        private ObservableCollection<ListItem<FilterItem>> _FilterList;
+        public ObservableCollection<ListItem<FilterItem>> FilterList
+        {
+            get { return _FilterList; }
+            set
+            {
+                if (_FilterList == value) return;
+                _FilterList = value;
+                if (_FilterList != null) _FilterList.CollectionChanged -= FilterList_CollectionChanged;
+                _FilterList.CollectionChanged += FilterList_CollectionChanged;
+                RaisePropertyChanged(FilterListName);
+            }
+        }
+
+        private void FilterList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            RaisePropertyChanged(FilterListName);
+        }
+
         #endregion
         #region Private Vars
         private Dispatcher dispatch;
@@ -293,6 +324,7 @@ namespace DuplicateFinderLib.ViewModel
             TitleString = "Duplicate Picutre File Resolver " + version;
             DupList = new ObservableCollection<DuplicateFile>();
             DupFilesList = new ObservableCollection<string>();
+            FilterList = new ObservableCollection<ListItem<FilterItem>>();
             
             //Commands
             GetSourceLocationCommand = new RelayCommand(GetSourceExecute);
@@ -300,6 +332,8 @@ namespace DuplicateFinderLib.ViewModel
             DeleteSelectedCommand = new RelayCommand(DeleteSelectedExecute);
             StopCommand = new RelayCommand(StopExectute);
             ScanCommand = new RelayCommand(ScanExecute);
+            AddFilterCommnad = new RelayCommand(AddFilterExecute);
+            RemoveFilterCommand = new RelayCommand(RemoveFilterExecute);
 
             //Init the worker thread information
             scanWorker = new BackgroundWorker();
@@ -313,6 +347,24 @@ namespace DuplicateFinderLib.ViewModel
             
             //Get the previous directory location specified
             if (Properties.Settings.Default.SourceLocation != string.Empty) SourceLocation = Properties.Settings.Default.SourceLocation;
+            if (Properties.Settings.Default.FilterList != null)
+            {
+                if (Properties.Settings.Default.FilterList.Count > 0)
+                {
+                    foreach (var a in Properties.Settings.Default.FilterList)
+                    {
+                        var split = a.Split('\n');
+                        if (split.GetUpperBound(0) == 1)
+                        {
+                            //Create the filters list item
+                            FilterItem fi = CreateFilterItem(true, split[1]);
+                            fi.filter = split[0];
+
+                            FilterList.Add(new ListItem<FilterItem> { Value = fi, IsSelected = false, Title = fi.filter });
+                        }
+                    }
+                }
+            }
             
             //If it is the standard runtime then load the default image, if not dont.  It was causing the xaml debugger to crash.
             if (System.ComponentModel.LicenseManager.UsageMode == LicenseUsageMode.Runtime) LoadImage(DefaultImage);
@@ -485,9 +537,17 @@ namespace DuplicateFinderLib.ViewModel
             //get dirs
             Parallel.ForEach(path.GetDirectories(), (d) =>
             {
-                GetFiles(d).ToList().ForEach((f) => list.Add(f));
+                try
+                {
+                    GetFiles(d).ToList().ForEach((f) => list.Add(f));
+                }
+                catch { }
             });
-            path.GetFiles().ToList().ForEach((f) => list.Add(f));
+            try
+            {
+                path.GetFiles().ToList().ForEach((f) => list.Add(f));
+            }
+            catch { }
             return list;
         }
 
@@ -509,32 +569,8 @@ namespace DuplicateFinderLib.ViewModel
                 //var fileList = dir.GetFiles("*.*", System.IO.SearchOption.AllDirectories);
 
                 int skipChrs = SourceLocation.Length;
-                System.Text.RegularExpressions.Regex regex;
-                //if we have no filter then match everything
-                if (FilterMask == string.Empty || FilterMask == null)
-                {
-                    regex = new System.Text.RegularExpressions.Regex("^$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                }
-                else
-                {
-                    //If we have a wildcard, create that, otherwise use the regex
-                    if (!RegexChecked)
-                    {
-                        Helpers.Wildcard wildcard = new Helpers.Wildcard(FilterMask, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                        regex = wildcard;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            regex = new System.Text.RegularExpressions.Regex(FilterMask, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                        }
-                        catch
-                        {
-                            regex = new System.Text.RegularExpressions.Regex("^$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                        }
-                    }
-                }
+                //GetFilters
+                var RegexList = FilterList.Select(d => d.Value.regex).ToList();
 
                 //Group Files into groups based on exact lengths (Cant Be the Same if their now the same length).  I didnt use linq asparallel as it was causing issues wiht the long file name lib
                 int i = 0;
@@ -544,7 +580,18 @@ namespace DuplicateFinderLib.ViewModel
                 Parallel.ForEach(fileList, (f) =>
                 {
                     InfoProgress = "Detecting Potential Duplicates " + i + "/" + imax;
-                    if (!regex.IsMatch(f.FullName))
+                    bool exclude = false;
+                    //Does it match any of our filters.
+                    foreach (var r in RegexList)
+                    {
+                        if (r.IsMatch(f.FullName))
+                        {
+                            exclude = true;
+                            break;
+                        }
+                    }
+                    //If its not excluded, add it to the list (if its not already)
+                    if (!exclude)
                     {
                         if (!fileGroupAll.ContainsKey(f.Length))
                         {
@@ -554,6 +601,7 @@ namespace DuplicateFinderLib.ViewModel
                     }
                     Interlocked.Increment(ref i);
                 });
+
                 double totalFiles = imax;
                 InfoProgress = "Detecting Potential Duplicates - Completing List";
                 var fileGroup = from f in fileGroupAll
@@ -651,7 +699,7 @@ namespace DuplicateFinderLib.ViewModel
                 if (scanWorker.CancellationPending) InfoProgress = "Canceled";
                 else InfoProgress = "Done - Processed " + totalFiles + " Files (" + DupList.Count().ToString() + " Duplicates in " + i + " Files";
             }
-            catch
+            catch (Exception ex)
             {
                 InfoProgress = "Error";
             }
@@ -743,8 +791,49 @@ namespace DuplicateFinderLib.ViewModel
             {
                 //Remove Image 
                 LoadImage(DefaultImage);
+                //TODO: change duplist to listitems and selected next item.
                 DupList.Remove(DupSelected);
                 DupFilesList.Clear();
+            }
+        }
+
+        public RelayCommand AddFilterCommnad { get; private set; }
+        public void AddFilterExecute()
+        {
+            FilterItem fi;
+            //if we have no filter then match everything
+            if (FilterMask == string.Empty || FilterMask == null)
+            {
+                fi = null;
+            }
+            else
+            {
+                fi = CreateFilterItem(RegexChecked, FilterMask);
+            }
+            if (fi != null)
+            {
+                FilterList.Add(new ListItem<FilterItem> { Value = fi, IsSelected = false, Title = fi.filter });
+                FilterMask = "";
+            }
+
+            //Reset User settings
+            System.Collections.Specialized.StringCollection saveFilters = new System.Collections.Specialized.StringCollection();
+            foreach(var a in FilterList)
+            {
+                string saveItem = $"{a.Value.filter}\n{a.Value.regex.ToString()}";
+                saveFilters.Add(saveItem);
+            }
+            Properties.Settings.Default.FilterList = saveFilters;
+            Properties.Settings.Default.Save();
+        }
+
+        public RelayCommand RemoveFilterCommand { get; private set; }
+        public void RemoveFilterExecute()
+        {
+            var remList = FilterList.Where(s => s.IsSelected).ToList();
+            foreach(var a in remList)
+            {
+                FilterList.Remove(a);
             }
         }
         #endregion
@@ -754,6 +843,39 @@ namespace DuplicateFinderLib.ViewModel
         {
             if (System.Diagnostics.Debugger.IsAttached)
                 System.Diagnostics.Debugger.Break();
+        }
+
+        private FilterItem CreateFilterItem(bool RegExFilter, string filter)
+        {
+            System.Text.RegularExpressions.Regex regex;
+            //If we have a wildcard, create that, otherwise use the regex
+            if (!RegExFilter)
+            {
+                Helpers.Wildcard wildcard = new Helpers.Wildcard(filter, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                regex = wildcard;
+            }
+            else
+            {
+                try
+                {
+                    regex = new System.Text.RegularExpressions.Regex(filter, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                }
+                catch
+                {
+                    regex = null;
+                }
+            }
+            if (regex != null)
+            {
+                FilterItem fi = new FilterItem();
+                fi.regex = regex;
+                fi.filter = filter;
+                return fi;
+            }
+            else
+            {
+                return null;
+            }
         }
     }
 }

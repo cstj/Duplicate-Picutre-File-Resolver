@@ -22,5 +22,28 @@ namespace DuplicateFinder.Properties {
                 return defaultInstance;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SourceLocation {
+            get {
+                return ((string)(this["SourceLocation"]));
+            }
+            set {
+                this["SourceLocation"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public global::System.Collections.Specialized.StringCollection FilterList {
+            get {
+                return ((global::System.Collections.Specialized.StringCollection)(this["FilterList"]));
+            }
+            set {
+                this["FilterList"] = value;
+            }
+        }
     }
 }
