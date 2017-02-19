@@ -24,7 +24,7 @@ namespace DuplicateFinderLib.ViewModel
     public class DuplicateFile
     {
         public string displayName { get; set; }
-        public ObservableCollection<String> filesList { get; set; }
+        public ObservableCollection<ListItem<string>> filesList { get; set; }
     }
 
     public class FilterItem
@@ -231,62 +231,121 @@ namespace DuplicateFinderLib.ViewModel
         }
         #endregion
         #region DupFiles
-        public const string DupFileSelectedName = "DupFileSelected";
-        private string _DupFileSelected = string.Empty;
-        public string DupFileSelected
-        {
-            get { return _DupFileSelected; }
-            set
-            {
-                if (_DupFileSelected == value) return;
-                _DupFileSelected = value;
-                RaisePropertyChanged(DupFileSelectedName);
-            }
-        }
-
         public const string DupFilesListName = "DupFilesList";
-        private ObservableCollection<string> _DupFilesList = new ObservableCollection<string>();
-        public ObservableCollection<string> DupFilesList
+        private ObservableCollection<ListItem<string>> _DupFilesList = new ObservableCollection<ListItem<string>>();
+        public ObservableCollection<ListItem<string>> DupFilesList
         {
             get { return _DupFilesList; }
             set
             {
                 if (_DupFilesList == value) return;
+                if (_DupFilesList != null)
+                {
+                    foreach (var i in _DupFilesList) i.PropertyChanged -= DupFileListItem_PropertyChanged;
+                    _DupFilesList.CollectionChanged -= DupFilesList_CollectionChanged;
+                }
                 _DupFilesList = value;
-                _DupFilesList.CollectionChanged += DupFilesList_CollectionChanged;
+                if (_DupFilesList != null)
+                {
+                    _DupFilesList.CollectionChanged += DupFilesList_CollectionChanged;
+                    foreach (var i in _DupFilesList) i.PropertyChanged += DupFileListItem_PropertyChanged;
+                }
                 RaisePropertyChanged(DupFilesListName);
             }
         }
-        #endregion
-        #region Dup Items
-        public const string DupSelectedName = "DupSelected";
-        private DuplicateFile _DupSelected = new DuplicateFile();
-        public DuplicateFile DupSelected
+
+        private void DupFileListItem_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            get { return _DupSelected; }
-            set
+            switch (e.PropertyName)
             {
-                if (_DupSelected == value) return;
-                _DupSelected = value;
-                RaisePropertyChanged(DupSelectedName);
+                case ListItem<object>.IsSelectedName:
+                    var DupFileSelected = (ListItem<string>)sender;
+                    if (DupFileSelected != null)
+                    {
+                        if (DupFileSelected != null)
+                        {
+                            KeepFileEnabled = true;
+                            DeleteFileEnabled = true;
+                        }
+                        else
+                        {
+                            KeepFileEnabled = false;
+                            DeleteFileEnabled = false;
+                        }
+                    }
+                    break;
             }
+            RaisePropertyChanged(DupFilesListName);
         }
 
+        private void DupFilesList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null) foreach (var i in e.OldItems) ((ListItem<string>)i).PropertyChanged -= DupFileListItem_PropertyChanged;
+            if (e.NewItems != null) foreach (var i in e.NewItems) ((ListItem<string>)i).PropertyChanged += DupFileListItem_PropertyChanged;
+            RaisePropertyChanged(DupFilesListName);
+        }
+        #endregion
+        #region Dup Items
         public const string DupListName = "DupList";
-        private ObservableCollection<DuplicateFile> _DupList = new ObservableCollection<DuplicateFile>();
-        public ObservableCollection<DuplicateFile> DupList
+        private ObservableCollection<ListItem<DuplicateFile>> _DupList = new ObservableCollection<ListItem<DuplicateFile>>();
+        public ObservableCollection<ListItem<DuplicateFile>> DupList
         {
             get { return _DupList; }
             set
             {
                 if (_DupList == value) return;
+                if (_DupList != null)
+                {
+                    foreach (var i in _DupList) i.PropertyChanged -= DupListItem_PropertyChanged;
+                    _DupList.CollectionChanged -= DupList_CollectionChanged;
+                }
                 _DupList = value;
-                _DupList.CollectionChanged += DupList_CollectionChanged;
+                if (_DupList != null)
+                {
+                    _DupList.CollectionChanged += DupList_CollectionChanged;
+                    foreach (var i in _DupList) i.PropertyChanged += DupListItem_PropertyChanged;
+                }
                 RaisePropertyChanged(DupListName);
             }
         }
-        #endregion
 
+        private void DupList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null) foreach (var i in e.OldItems) ((ListItem<DuplicateFile>)i).PropertyChanged -= DupListItem_PropertyChanged;
+            if (e.NewItems != null) foreach (var i in e.NewItems) ((ListItem<DuplicateFile>)i).PropertyChanged += DupListItem_PropertyChanged;
+            RaisePropertyChanged(DupListName);
+        }
+
+        private void DupListItem_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            //List Item Property Changed
+            switch (e.PropertyName)
+            {
+                case ListItem<object>.IsSelectedName:
+                    var DupSelected = (ListItem<DuplicateFile>)sender;
+                    if (DupSelected != null)
+                    {
+                        FileInfo f = new FileInfo(DupSelected.Value.filesList[0].Value);
+                        if (f.Exists)
+                        {
+                            //Set the files list
+                            DupFilesList = DupSelected.Value.filesList;
+                            DupFilesList[0].IsSelected = true;
+                            //Set the picture
+                            LoadImage(DupSelected.Value.filesList[0].Value);
+                        }
+                    }
+                    else
+                    {
+                        LoadImage(DefaultImage);
+                    }
+                    GC.Collect();
+                    RaisePropertyChanged(DupListName);
+                    break;
+            }
+        }
+        #endregion
+        #region FilterList
         public const string FilterListName = "FilterList";
         private ObservableCollection<ListItem<FilterItem>> _FilterList;
         public ObservableCollection<ListItem<FilterItem>> FilterList
@@ -306,6 +365,7 @@ namespace DuplicateFinderLib.ViewModel
         {
             RaisePropertyChanged(FilterListName);
         }
+        #endregion
 
         #endregion
         #region Private Vars
@@ -322,8 +382,8 @@ namespace DuplicateFinderLib.ViewModel
             dispatch = dispatcher;
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
             TitleString = "Duplicate Picutre File Resolver " + version;
-            DupList = new ObservableCollection<DuplicateFile>();
-            DupFilesList = new ObservableCollection<string>();
+            DupList = new ObservableCollection<ListItem<DuplicateFile>>();
+            DupFilesList = new ObservableCollection<ListItem<string>>();
             FilterList = new ObservableCollection<ListItem<FilterItem>>();
             
             //Commands
@@ -403,54 +463,12 @@ namespace DuplicateFinderLib.ViewModel
                     if (sourceDir.Exists) ScanEnabled = true;
                     else ScanEnabled = false;
                     break;
-
-                case DupSelectedName:
-                    if (DupSelected != null)
-                    { 
-                        FileInfo f = new FileInfo(DupSelected.filesList[0]);
-                        if (f.Exists)
-                        {
-                            //Set the files list
-                            DupFilesList = DupSelected.filesList;
-                            //Set the picture
-                            LoadImage(DupSelected.filesList[0]);
-                            //ImageSource = DupSelected.filesList[0];
-                        }
-                    }
-                    else
-                    {
-                        LoadImage(DefaultImage);
-                    }
-                    GC.Collect();
-                    break;
-                case DupFileSelectedName:
-                    if (DupFileSelected != null)
-                    {
-                        KeepFileEnabled = true;
-                        DeleteFileEnabled = true;
-                    }
-                    else
-                    {
-                        KeepFileEnabled = false;
-                        DeleteFileEnabled = false;
-                    }
-                    break;
             }
         }
         
         private void FilesList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
 
-        }
-
-        private void DupFilesList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-        {
-            RaisePropertyChanged(DupFilesListName);
-        }
-
-        private void DupList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-        {
-            RaisePropertyChanged(DupListName);
         }
         #endregion
         
@@ -521,12 +539,15 @@ namespace DuplicateFinderLib.ViewModel
         private readonly BackgroundWorker scanWorker;
         private void ScanExecute()
         {
-            if (!scanWorker.IsBusy)
+            if (ScanEnabled)
             {
-                ScanEnabled = false;
-                scanWorker.RunWorkerAsync();
-                StopEnabled = true;
-                GetSourceLocationEnabled = false;
+                if (!scanWorker.IsBusy)
+                {
+                    ScanEnabled = false;
+                    scanWorker.RunWorkerAsync();
+                    StopEnabled = true;
+                    GetSourceLocationEnabled = false;
+                }
             }
         }
 
@@ -680,14 +701,17 @@ namespace DuplicateFinderLib.ViewModel
                             if (tmpFiles.Count() > 1)
                             {
                                 //Add our files list
-                                ObservableCollection<string> tmpObList = new ObservableCollection<string>();
-                                tmpFiles.ToList().ForEach(l => tmpObList.Add(l));
+                                ObservableCollection<ListItem<string>> tmpObList = new ObservableCollection<ListItem<string>>();
+                                foreach(var f in tmpFiles)
+                                {
+                                    tmpObList.Add(new ListItem<string> { Value = f, Title = f });
+                                }
                                 d.filesList = tmpObList;
                                 d.filesList.CollectionChanged += FilesList_CollectionChanged;
                                 //Add the duplicate to the dup collection
                                 lock (DupList)
                                 {
-                                    dispatch.Invoke(() => DupList.Add(d));
+                                    dispatch.Invoke(() => DupList.Add(new ListItem<DuplicateFile> { Value = d, Title = d.displayName, IsSelected = false }));
                                 }
                             }
                             data1 = null;
@@ -745,55 +769,141 @@ namespace DuplicateFinderLib.ViewModel
         public RelayCommand KeepSelectedCommand { get; private set; }
         private void KeepSelectedExecute()
         {
-            //Find all other dups and delte them
-            var filesToDel = (from f in DupFilesList
-                              where f != DupFileSelected
-                              select f).ToList();
-            //Delete all of the others
-            foreach (var f in filesToDel)
+            if (KeepFileEnabled)
             {
-                try
+                var DupFileSelected = DupFilesList.Where(d => d.IsSelected).FirstOrDefault();
+                if (DupFileSelected != null)
                 {
-                    FileInfo file = new FileInfo(f);
-                    if (file.Exists) file.Delete();
-                    DupFilesList.Remove(f);
-                }
-                catch (Exception e)
-                {
-                    System.Windows.MessageBox.Show("Error deleting file:" + Environment.NewLine + e.Message, "Error Copying Files", System.Windows.MessageBoxButton.OK);
+                    Ookii.Dialogs.Wpf.TaskDialogButton confirm;
+                    using (Ookii.Dialogs.Wpf.TaskDialog dialog = new Ookii.Dialogs.Wpf.TaskDialog())
+                    {
+                        dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Ok));
+                        dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Cancel));
+                        dialog.Content = $"Are you sure you want to delete ALL other duplicates apart from \n{DupFileSelected.Value}?";
+                        dialog.WindowTitle = "Confirm Keep Only This File";
+                        dialog.MainIcon = Ookii.Dialogs.Wpf.TaskDialogIcon.Warning;
+                        confirm = dialog.ShowDialog();
+                    }
+
+                    if (confirm.ButtonType == Ookii.Dialogs.Wpf.ButtonType.Ok)
+                    {
+                        //Find all other dups and delte them
+                        var filesToDel = (from f in DupFilesList
+                                          where f.Value != DupFileSelected.Value
+                                          select f).ToList();
+                        //Delete all of the others
+                        foreach (var f in filesToDel)
+                        {
+                            try
+                            {
+                                FileInfo file = new FileInfo(f.Value);
+                                if (file.Exists) file.Delete();
+                                DupFilesList.Remove(f);
+                            }
+                            catch (Exception e)
+                            {
+                                System.Windows.MessageBox.Show("Error deleting file:" + Environment.NewLine + e.Message, "Error Copying Files", System.Windows.MessageBoxButton.OK);
+                            }
+                        }
+                        //Get Currently Selected
+                        var DupSelected = DupList.Where(s => s.IsSelected).FirstOrDefault();
+                        if (DupSelected != null)
+                        {
+                            DupSelected.Value.filesList = DupFilesList;
+                            TestDupItem();
+                        }
+                    }
                 }
             }
-            DupSelected.filesList = DupFilesList;
-            TestDupItem();
-
         }
 
         public RelayCommand DeleteSelectedCommand { get; private set; }
         private void DeleteSelectedExecute()
         {
-            try
+            if (DeleteFileEnabled)
             {
-                FileInfo file = new FileInfo(DupFileSelected);
-                if (file.Exists) file.Delete();
-                DupFilesList.Remove(DupFileSelected);
-                DupSelected.filesList = DupFilesList;
+                var DupFileSelected = DupFilesList.Where(d => d.IsSelected).FirstOrDefault();
+                if (DupFileSelected != null)
+                {
+                    Ookii.Dialogs.Wpf.TaskDialogButton confirm;
+                    using (Ookii.Dialogs.Wpf.TaskDialog dialog = new Ookii.Dialogs.Wpf.TaskDialog())
+                    {
+                        dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Ok));
+                        dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Cancel));
+                        dialog.Content = $"Are you sure you want to delete \n{DupFileSelected.Value}?";
+                        dialog.WindowTitle = "Confirm File Delete";
+                        dialog.MainIcon = Ookii.Dialogs.Wpf.TaskDialogIcon.Warning;
+                        confirm = dialog.ShowDialog();
+                    }
+
+                    if (confirm.ButtonType == Ookii.Dialogs.Wpf.ButtonType.Ok)
+                    {
+                        try
+                        {
+                            FileInfo file = new FileInfo(DupFileSelected.Value);
+                            if (file.Exists) file.Delete();
+                            RemoveDupFileItem(ref DupFileSelected);
+                            var DupSelected = DupList.Where(s => s.IsSelected).FirstOrDefault();
+                            if (DupSelected != null)
+                            {
+                                DupSelected.Value.filesList = DupFilesList;
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            System.Windows.MessageBox.Show("Error deleting file:" + Environment.NewLine + e.Message, "Error Copying Files", System.Windows.MessageBoxButton.OK);
+                        }
+                        TestDupItem();
+                    }
+                }
             }
-            catch (Exception e)
+        }
+
+        private void RemoveDupFileItem(ref ListItem<string> item)
+        {
+            //Get Current selection
+            int currentSelection = -1;
+            for (int i = 0; i < DupFilesList.Count; i++)
             {
-                System.Windows.MessageBox.Show("Error deleting file:" + Environment.NewLine + e.Message, "Error Copying Files", System.Windows.MessageBoxButton.OK);
+                if (DupFilesList[i] == item)
+                {
+                    currentSelection = i;
+                }
             }
-            TestDupItem();
+            DupFilesList.Remove(item);
+            if (currentSelection != -1 && currentSelection < DupFilesList.Count - 1)
+                DupFilesList[currentSelection].IsSelected = true;
+            else
+                DupFilesList[DupFilesList.Count - 1].IsSelected = true;
         }
 
         private void TestDupItem()
         {
-            if (DupSelected.filesList.Count == 1)
+            int currentSelection = -1;
+            ListItem<DuplicateFile> DupSelected = null;
+            for (int i = 0; i < DupList.Count; i++)
             {
-                //Remove Image 
-                LoadImage(DefaultImage);
-                //TODO: change duplist to listitems and selected next item.
-                DupList.Remove(DupSelected);
-                DupFilesList.Clear();
+                if (DupList[i].IsSelected)
+                {
+                    DupSelected = DupList[i];
+                    currentSelection = i;
+                    break;
+                }
+            }
+
+            if (DupSelected != null)
+            {
+                if (DupSelected.Value.filesList.Count == 1)
+                {
+                    //Remove Image 
+                    LoadImage(DefaultImage);
+                    DupList.Remove(DupSelected);
+                    DupFilesList.Clear();
+                    if (currentSelection != -1 && DupList.Count - 1 > currentSelection)
+                        DupList[currentSelection].IsSelected = true;
+                    else
+                        DupList[DupList.Count - 1].IsSelected = true;
+                }
             }
         }
 

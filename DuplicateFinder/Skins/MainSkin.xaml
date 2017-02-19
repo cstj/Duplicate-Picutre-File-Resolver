@@ -1,4 +1,6 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    
+    <Style x:Key="ListBoxNormalStyle" TargetType="{x:Type ListBoxItem}" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+    </Style>
 </ResourceDictionary>

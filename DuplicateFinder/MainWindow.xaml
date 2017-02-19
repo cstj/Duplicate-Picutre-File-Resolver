@@ -22,7 +22,12 @@
     <Window.DataContext>
         <Binding Path="Main.MainViewModel" Source="{StaticResource Locator}"/>
     </Window.DataContext>
-
+    <Window.InputBindings>
+        <KeyBinding Command="{Binding KeepSelectedCommand}" Key="K"/>
+        <KeyBinding Command="{Binding DeleteSelectedCommand}" Key="D"/>
+        <KeyBinding Command="{Binding ScanCommand}" Key="R"/>
+        <KeyBinding Command="{Binding GetSourceLocationCommand}" Key="P"/>
+    </Window.InputBindings>
     <Grid x:Name="LayoutRoot">
         <Grid.RowDefinitions>
             <RowDefinition Height="42"/>
@@ -37,10 +42,18 @@
             <ColumnDefinition Width="91"/>
             <ColumnDefinition Width="150"/>
         </Grid.ColumnDefinitions>
-        <Button Content="Pick Folder" Grid.Column="1" Margin="10,10,5,10" Command="{Binding GetSourceLocationCommand, Mode=OneWay}" IsEnabled="{Binding GetSourceLocationEnabled}"/>
+        <Button Grid.Column="1" Margin="10,10,5,10" Command="{Binding GetSourceLocationCommand, Mode=OneWay}" IsEnabled="{Binding GetSourceLocationEnabled}">
+            <Button.Content>
+                <TextBlock><Underline>P</Underline>ick Folder</TextBlock>
+            </Button.Content>
+        </Button>
         <TextBox Margin="146,10,5,9" TextWrapping="Wrap" IsEnabled="False" Text="{Binding SourceLocation}"/>
         <Label Content="Base Directory:" Margin="10,8,352,10"/>
-        <Button Content="(Re)Scan" Grid.Column="2" Margin="5,10,10,10" Command="{Binding ScanCommand, Mode=OneWay}" IsEnabled="{Binding ScanEnabled}"/>
+        <Button Grid.Column="2" Margin="5,10,10,10" Command="{Binding ScanCommand, Mode=OneWay}" IsEnabled="{Binding ScanEnabled}">
+            <Button.Content>
+                <TextBlock>(<Underline>R</Underline>e)Scan</TextBlock>
+            </Button.Content>
+        </Button>
         <ProgressBar Margin="10,0,5,4" Grid.Row="4" Maximum="100" Minimum="0" Value="{Binding PgsVal}"/>
         <TextBox TextWrapping="NoWrap" Background="Transparent" HorizontalContentAlignment="Center" Text="{Binding InfoProgress}" Margin="10,0,5,4" Grid.Row="4"/>
         <Button Content="Stop" Grid.Column="1" Margin="0,0,10,4" Command="{Binding StopCommand, Mode=OneWay}" IsEnabled="{Binding StopEnabled}" Grid.Row="4" Grid.ColumnSpan="2"/>
@@ -64,13 +77,7 @@
                     <ColumnDefinition Width="4"/>
                     <ColumnDefinition Width="483*"/>
                 </Grid.ColumnDefinitions>
-                <ListBox Margin="0,30,5,0" ItemsSource="{Binding DupList}" SelectedItem="{Binding DupSelected}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding displayName}"/>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                <ListBox Margin="0,30,5,0" ItemsSource="{Binding DupList}" SelectionMode="Single" ItemContainerStyle="{StaticResource ListBoxNormalStyle}" />
                 <Label Content="Duplicate Groups" Margin="0,0,5,0" Height="24" VerticalAlignment="Top"/>
                 <GridSplitter x:Name="gridSplitter" Margin="0,0,0,0" Grid.Column="1" HorizontalAlignment="Stretch" Background="{DynamicResource {x:Static SystemColors.ControlLightBrushKey}}"/>
                 <Border Grid.Column="2">
@@ -92,9 +99,17 @@
                                 <ColumnDefinition Width="1*"/>
                                 <ColumnDefinition Width="1*"/>
                             </Grid.ColumnDefinitions>
-                            <Button Content="Delete Selected" Grid.Row="1" Grid.Column="1" Command="{Binding DeleteSelectedCommand, Mode=OneWay}" Margin="5,10,0,10" IsEnabled="{Binding DeleteFileEnabled}" />
-                            <Button Content="Keep Selected" Grid.Row="1" Margin="5,10" Command="{Binding KeepSelectedCommand, Mode=OneWay}" IsEnabled="{Binding KeepFileEnabled}"/>
-                            <ListBox Margin="5,30,0,0" ItemsSource="{Binding DupFilesList}" SelectedItem="{Binding DupFileSelected}" Grid.ColumnSpan="2"/>
+                            <Button Grid.Row="1" Grid.Column="1" Command="{Binding DeleteSelectedCommand, Mode=OneWay}" Margin="5,10,0,10" IsEnabled="{Binding DeleteFileEnabled}" >
+                                <Button.Content>
+                                    <TextBlock><Underline>D</Underline>elete Selected</TextBlock>
+                                </Button.Content>
+                            </Button>
+                            <Button Grid.Row="1" Margin="5,10" Command="{Binding KeepSelectedCommand, Mode=OneWay}" IsEnabled="{Binding KeepFileEnabled}">
+                                <Button.Content>
+                                    <TextBlock><Underline>K</Underline>eep Selected</TextBlock>
+                                </Button.Content>
+                            </Button>
+                            <ListBox Margin="5,30,0,0" ItemsSource="{Binding DupFilesList}" Grid.ColumnSpan="2" ItemContainerStyle="{StaticResource ListBoxNormalStyle}" />
                             <Label Content="Duplicates Files" Grid.ColumnSpan="2" Height="25" VerticalAlignment="Top" Margin="5,0,0,0"/>
                         </Grid>
                         <Border Margin="5,5,0,0" Grid.Row="2" BorderBrush="Gray" BorderThickness="1">
@@ -105,13 +120,7 @@
                 </Border>
             </Grid>
         </Border>
-        <ListBox SelectionMode="Extended" x:Name="listBox" Grid.Column="3" Grid.Row="3" Margin="0,0,10,5" ItemsSource="{Binding FilterList}">
-            <ListBox.ItemContainerStyle>
-                <Style TargetType="{x:Type ListBoxItem}" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
-                </Style>
-            </ListBox.ItemContainerStyle>
-        </ListBox>
+        <ListBox SelectionMode="Extended" x:Name="listBox" Grid.Column="3" Grid.Row="3" Margin="0,0,10,5" ItemsSource="{Binding FilterList}" ItemContainerStyle="{StaticResource ListBoxNormalStyle}" />
         <Button x:Name="button" Content="Remove Selected Filters" Command="{Binding RemoveFilterCommand}" Grid.Column="3" HorizontalAlignment="Left" Grid.Row="4" Width="140" Margin="0,0,0,4"/>
         <Button x:Name="button1" Content="Add Filter" Command="{Binding AddFilterCommnad}" Grid.Column="3" Grid.Row="2" Margin="0,10,10,13"/>
     </Grid>
