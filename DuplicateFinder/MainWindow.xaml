@@ -23,10 +23,10 @@
         <Binding Path="Main.MainViewModel" Source="{StaticResource Locator}"/>
     </Window.DataContext>
     <Window.InputBindings>
-        <KeyBinding Command="{Binding KeepSelectedCommand}" Key="K"/>
-        <KeyBinding Command="{Binding DeleteSelectedCommand}" Key="D"/>
-        <KeyBinding Command="{Binding ScanCommand}" Key="R"/>
-        <KeyBinding Command="{Binding GetSourceLocationCommand}" Key="P"/>
+        <KeyBinding Command="{Binding KeepSelectedCommand}" Key="K" Modifiers="Alt"/>
+        <KeyBinding Command="{Binding DeleteSelectedCommand}" Key="D" Modifiers="Alt"/>
+        <KeyBinding Command="{Binding ScanCommand}" Key="R" Modifiers="Alt"/>
+        <KeyBinding Command="{Binding GetSourceLocationCommand}" Key="P" Modifiers="Alt"/>
     </Window.InputBindings>
     <Grid x:Name="LayoutRoot">
         <Grid.RowDefinitions>

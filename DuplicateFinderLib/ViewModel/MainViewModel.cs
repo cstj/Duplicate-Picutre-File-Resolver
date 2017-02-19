@@ -404,7 +404,15 @@ namespace DuplicateFinderLib.ViewModel
             
             //Catch property changes
             this.PropertyChanged += MainViewModel_PropertyChanged;
-            
+
+            //Merge Settings from old version if required
+            if (Properties.Settings.Default.UpgradeRequired)
+            {
+                Properties.Settings.Default.Upgrade();
+                Properties.Settings.Default.UpgradeRequired = false;
+                Properties.Settings.Default.Save();
+            }
+
             //Get the previous directory location specified
             if (Properties.Settings.Default.SourceLocation != string.Empty) SourceLocation = Properties.Settings.Default.SourceLocation;
             if (Properties.Settings.Default.FilterList != null)
