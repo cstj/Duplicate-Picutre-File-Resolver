@@ -474,7 +474,8 @@ namespace DuplicateFinderLib.ViewModel
         {
             try
             {
-                string url = "https://github.com/cstj/Duplicate-Picutre-File-Resolver/releases.atom";
+                string baseAddy = "https://github.com";
+                string url = $"{baseAddy}/cstj/Duplicate-Picutre-File-Resolver/releases.atom";
                 XmlTextReader reader = new XmlTextReader(url);
                 SyndicationFeed feed = SyndicationFeed.Load(reader);
                 var item = feed.Items.FirstOrDefault();
@@ -493,7 +494,7 @@ namespace DuplicateFinderLib.ViewModel
                             {
                                 dispatch.Invoke(() =>
                                 {
-                                    UpgradeURI = uri.Uri.ToString();
+                                    UpgradeURI = baseAddy + uri.Uri.ToString();
                                     UpgradeURIText = $"New version avilable, Click here to download!";
                                 });
                             }
