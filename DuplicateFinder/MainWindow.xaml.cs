@@ -1,4 +1,7 @@
 ﻿using System.Windows;
+using System.ServiceModel.Syndication;
+using System.Xml;
+using System.Linq;
 
 namespace DuplicateFinder
 {
@@ -13,8 +16,6 @@ namespace DuplicateFinder
         public MainWindow()
         {
             InitializeComponent();
-            //AutoUpdater.OpenDownloadPage = true;
-            //AutoUpdater.Start("https://raw.githubusercontent.com/cstj/Duplicate-Picutre-File-Resolver/master/DuplicateFinder/DuplicateFinderVersion.xml");
         }
     }
 }

@@ -17,6 +17,8 @@ using DirectoryInfo = Pri.LongPath.DirectoryInfo;
 using File = Pri.LongPath.File;
 using FileInfo = Pri.LongPath.FileInfo;
 using Helpers;
+using System.Xml;
+using System.ServiceModel.Syndication;
 
 namespace DuplicateFinderLib.ViewModel
 {
@@ -61,6 +63,31 @@ namespace DuplicateFinderLib.ViewModel
     {
         public string DefaultImage = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), @"res\picture.png");
         #region Public Vars
+        public const string UpgradeURIName = "UpgradeURI";
+        private string _UpgradeURI;
+        public string UpgradeURI
+        {
+            get { return _UpgradeURI; }
+            set
+            {
+                if (_UpgradeURI == value) return;
+                _UpgradeURI = value;
+                RaisePropertyChanged(UpgradeURIName);
+            }
+        }
+
+        public const string UpgradeURITextName = "UpgradeURIText";
+        private string _UpgradeURIText;
+        public string UpgradeURIText
+        {
+            get { return _UpgradeURIText; }
+            set
+            {
+                if (_UpgradeURIText == value) return;
+                _UpgradeURIText = value;
+                RaisePropertyChanged(UpgradeURITextName);
+            }
+        }
 
         #region InfoProgress
         public const string InfoProgressName = "InfoProgress";
@@ -433,9 +460,48 @@ namespace DuplicateFinderLib.ViewModel
                     }
                 }
             }
-            
+
+            //Start background to check for update
+            Task.Run(() => CheckNewVersion());
+                        
             //If it is the standard runtime then load the default image, if not dont.  It was causing the xaml debugger to crash.
             if (System.ComponentModel.LicenseManager.UsageMode == LicenseUsageMode.Runtime) LoadImage(DefaultImage);
+
+            
+        }
+
+        private void CheckNewVersion()
+        {
+            try
+            {
+                string url = "https://github.com/cstj/Duplicate-Picutre-File-Resolver/releases.atom";
+                XmlTextReader reader = new XmlTextReader(url);
+                SyndicationFeed feed = SyndicationFeed.Load(reader);
+                var item = feed.Items.FirstOrDefault();
+                if (item != null)
+                {
+                    var uri = item.Links.FirstOrDefault();
+                    if (uri != null)
+                    {
+                        var tag = System.IO.Path.GetFileName(uri.Uri.ToString());
+                        System.Version uriVersion;
+                        if (System.Version.TryParse(tag, out uriVersion))
+                        {
+                            //Test the current version and check if the uri has a newer version
+                            System.Version currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                            if (currentVersion < uriVersion)
+                            {
+                                dispatch.Invoke(() =>
+                                {
+                                    UpgradeURI = uri.Uri.ToString();
+                                    UpgradeURIText = $"New version avilable, Click here to download!";
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
         }
 
         //Closes the memory stream on the previous image.
