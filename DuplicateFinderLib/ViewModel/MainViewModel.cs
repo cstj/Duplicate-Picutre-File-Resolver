@@ -63,6 +63,7 @@ namespace DuplicateFinderLib.ViewModel
     {
         public string DefaultImage = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), @"res\picture.png");
         #region Public Vars
+        #region Upgrade Information
         public const string UpgradeURIName = "UpgradeURI";
         private string _UpgradeURI;
         public string UpgradeURI
@@ -88,6 +89,23 @@ namespace DuplicateFinderLib.ViewModel
                 RaisePropertyChanged(UpgradeURITextName);
             }
         }
+        #endregion
+
+        #region SkipDeleteConfirmations
+        public const string SkipDeleteConfirmationsName = "SkipDeleteConfirmations";
+        private bool _SkipDeleteConfirmations = false;
+        public bool SkipDeleteConfirmations
+        {
+            get { return _SkipDeleteConfirmations; }
+            set
+            {
+                if (_SkipDeleteConfirmations == value) return;
+                _SkipDeleteConfirmations = value;
+                RaisePropertyChanged(SkipDeleteConfirmationsName);
+            }
+        }
+
+        #endregion
 
         #region InfoProgress
         public const string InfoProgressName = "InfoProgress";
@@ -442,6 +460,8 @@ namespace DuplicateFinderLib.ViewModel
 
             //Get the previous directory location specified
             if (Properties.Settings.Default.SourceLocation != string.Empty) SourceLocation = Properties.Settings.Default.SourceLocation;
+            SkipDeleteConfirmations = Properties.Settings.Default.SkipDeleteDialogs;
+
             if (Properties.Settings.Default.FilterList != null)
             {
                 if (Properties.Settings.Default.FilterList.Count > 0)
@@ -537,6 +557,11 @@ namespace DuplicateFinderLib.ViewModel
                     DirectoryInfo sourceDir = new DirectoryInfo(SourceLocation);
                     if (sourceDir.Exists) ScanEnabled = true;
                     else ScanEnabled = false;
+                    break;
+
+                case SkipDeleteConfirmationsName:
+                    Properties.Settings.Default.SkipDeleteDialogs = SkipDeleteConfirmations;
+                    Properties.Settings.Default.Save();
                     break;
             }
         }
@@ -849,18 +874,21 @@ namespace DuplicateFinderLib.ViewModel
                 var DupFileSelected = DupFilesList.Where(d => d.IsSelected).FirstOrDefault();
                 if (DupFileSelected != null)
                 {
-                    Ookii.Dialogs.Wpf.TaskDialogButton confirm;
-                    using (Ookii.Dialogs.Wpf.TaskDialog dialog = new Ookii.Dialogs.Wpf.TaskDialog())
+                    Ookii.Dialogs.Wpf.TaskDialogButton confirm = new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Cancel);
+                    if (!SkipDeleteConfirmations)
                     {
-                        dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Ok));
-                        dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Cancel));
-                        dialog.Content = $"Are you sure you want to delete ALL other duplicates apart from \n{DupFileSelected.Value}?";
-                        dialog.WindowTitle = "Confirm Keep Only This File";
-                        dialog.MainIcon = Ookii.Dialogs.Wpf.TaskDialogIcon.Warning;
-                        confirm = dialog.ShowDialog();
+                        using (Ookii.Dialogs.Wpf.TaskDialog dialog = new Ookii.Dialogs.Wpf.TaskDialog())
+                        {
+                            dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Ok));
+                            dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Cancel));
+                            dialog.Content = $"Are you sure you want to delete ALL other duplicates apart from \n{DupFileSelected.Value}?";
+                            dialog.WindowTitle = "Confirm Keep Only This File";
+                            dialog.MainIcon = Ookii.Dialogs.Wpf.TaskDialogIcon.Warning;
+                            confirm = dialog.ShowDialog();
+                        }
                     }
 
-                    if (confirm.ButtonType == Ookii.Dialogs.Wpf.ButtonType.Ok)
+                    if (confirm.ButtonType == Ookii.Dialogs.Wpf.ButtonType.Ok || SkipDeleteConfirmations)
                     {
                         //Find all other dups and delte them
                         var filesToDel = (from f in DupFilesList
@@ -900,18 +928,21 @@ namespace DuplicateFinderLib.ViewModel
                 var DupFileSelected = DupFilesList.Where(d => d.IsSelected).FirstOrDefault();
                 if (DupFileSelected != null)
                 {
-                    Ookii.Dialogs.Wpf.TaskDialogButton confirm;
-                    using (Ookii.Dialogs.Wpf.TaskDialog dialog = new Ookii.Dialogs.Wpf.TaskDialog())
+                    Ookii.Dialogs.Wpf.TaskDialogButton confirm = new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Cancel);
+                    if (!SkipDeleteConfirmations)
                     {
-                        dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Ok));
-                        dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Cancel));
-                        dialog.Content = $"Are you sure you want to delete \n{DupFileSelected.Value}?";
-                        dialog.WindowTitle = "Confirm File Delete";
-                        dialog.MainIcon = Ookii.Dialogs.Wpf.TaskDialogIcon.Warning;
-                        confirm = dialog.ShowDialog();
+                        using (Ookii.Dialogs.Wpf.TaskDialog dialog = new Ookii.Dialogs.Wpf.TaskDialog())
+                        {
+                            dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Ok));
+                            dialog.Buttons.Add(new Ookii.Dialogs.Wpf.TaskDialogButton(Ookii.Dialogs.Wpf.ButtonType.Cancel));
+                            dialog.Content = $"Are you sure you want to delete \n{DupFileSelected.Value}?";
+                            dialog.WindowTitle = "Confirm File Delete";
+                            dialog.MainIcon = Ookii.Dialogs.Wpf.TaskDialogIcon.Warning;
+                            confirm = dialog.ShowDialog();
+                        }
                     }
 
-                    if (confirm.ButtonType == Ookii.Dialogs.Wpf.ButtonType.Ok)
+                    if (confirm.ButtonType == Ookii.Dialogs.Wpf.ButtonType.Ok || SkipDeleteConfirmations)
                     {
                         try
                         {

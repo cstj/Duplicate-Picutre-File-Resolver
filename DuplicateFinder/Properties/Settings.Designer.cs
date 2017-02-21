@@ -57,5 +57,17 @@ namespace DuplicateFinder.Properties {
                 this["UpgradeRequired"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool SkipDeleteDialogs {
+            get {
+                return ((bool)(this["SkipDeleteDialogs"]));
+            }
+            set {
+                this["SkipDeleteDialogs"] = value;
+            }
+        }
     }
 }
